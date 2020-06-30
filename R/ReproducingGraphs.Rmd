@@ -1,0 +1,12 @@
+---
+title: "Reproducing Graphs"
+author: "Max Frissell"
+date: "6/30/2020"
+output: html_document
+---
+
+``` {r ReadData, include = F}
+data = read.csv("~/data/srdb-data.csv")
+```
+
+### Some Basic Graphs of the SRDB Data
