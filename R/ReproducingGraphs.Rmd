@@ -1,0 +1,91 @@
+---
+title: "Making Some Graphs"
+author: "Max Frissell"
+date: "7/1/2020"
+output: 
+  html_document:
+    theme: cerulean
+---
+
+``` {r ReadData, include = F}
+library(here)
+library(magrittr)
+library(ggplot2)
+library(png) #load packages for use later
+
+path = here("data", "srdb-data.csv")
+allData = read.csv(path) 
+attach(allData) #get all SRDB data and attach it for use
+
+RCData = allData[RC_annual > -1,] #only the data with RC values
+```
+
+### Some Basic Scatterplots from the SRDB Data
+
+#### *They're all Longitude and Latitude, so they are basically world maps.*
+
+First, here is a plot of all values of the root contribution (RC) to soil respiration (Rs) and where they were taken.
+
+```{r GraphRC, warning = F}
+ggplot(RCData, aes(x = Longitude, y = Latitude, col = RC_annual)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+```
+
+This is a similar graph, but instead of showing the root contribution, it shows the total annual soil respiration in grams of carbon per square meter. 
+Note, this only includes sites with Rs values less than 5,000. 
+Without filtering out some of the very high values that are likely due to measurement error, the color scale doesn't show anything.
+
+```{r GraphRs, warning = F}
+ggplot(allData[Rs_annual <= 6000,], aes(x = Longitude, y = Latitude, col = Rs_annual)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+```
+
+This is the mean annual temperature (MAT) in degrees Celsius, vs the location.
+
+```{r GraphMAT, warning = F}
+ggplot(allData[MAT >= -20,], aes(x = Longitude, y = Latitude, col = MAT)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+```
+
+Similarly, this is the mean annual precipitation (MAP) in millimeters.
+
+```{r GraphMAP, warning = F}
+ggplot(allData[MAP >= 0,], aes(x = Longitude, y = Latitude, col = MAP)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+```
+
+### Histograms of Relevent Data
+
+Now here is the distribution of values in the SRDB for the soil respiration root contribution.
+The values that are less than 0 or greater than 1 must be wrong because these are proportions.
+
+```{r RCHistogram, message = F}
+hist(RCData$RC_annual, main = "Histogram of Annual RC's", xlab = "Annual RC", breaks = 20, col = "4") #makes the histogram
+```
+
+This is the histogram of annual soil respiration values.
+There were a few very large outliers that were removed.
+This kept the maximum x axis value small enough for the histogram to actually have meaning.
+
+```{r RsHistogram, message = F}
+hist(allData$Rs_annual[Rs_annual <= 5000], main = "Histogram of Annual Rs's", xlab = "Annual Rs (grams of C per square meter)", breaks = 20, col = "4") #makes the histogram
+```
+
+#### *Doesn't that just look beautiful! By far my favorite graph here*
+
+This is a histogram of the mean annual temperature values, in degrees Celsius.
+
+```{r MATHistogram, message = F}
+hist(allData$MAT, main = "Histogram of Mean Annual Temperatures", xlab = "MAT (degrees C)", breaks = 40, col = "4") #makes the histogram
+```
+
+This is a histogram of mean annual precipitation values, in millimeters.
+
+```{r MAPHistogram, message = F}
+hist(allData$MAP, main = "Histogram of Mean Annual Precipitations", xlab = "MAP (millimeters)", breaks = 20, col = "4") #makes the histogram
+```
+
+### Now this is just a relationship that I stumbled into and the graph looks cool
+
+This is the relationship between the distance from the equator in degrees and mean annual temperature.
+Everyone would expect their to be a relationship, but it turned out pretty well and I just like how the graph looks.
+
+```{r LattitudeAndMAT, message = F, warning = F}
+ggplot(allData[MAT >= -20,], aes(x = abs(Latitude), y = MAT)) + geom_point(color = "4", size = 2) + theme_bw() + labs(x = "Distance from Equator (degrees)", y = "MAT (degrees C)")
+```
