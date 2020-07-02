@@ -40,3 +40,9 @@ vignettes/*.pdf
 
 # General data
 data/*
+
+# Output html files
+*.html
+
+# OS files
+.DS_Store
