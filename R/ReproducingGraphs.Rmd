@@ -27,7 +27,10 @@ RCData = allData[RC_annual > -1,] #only the data with RC values
 First, here is a plot of all values of the root contribution (RC) to soil respiration (Rs) and where they were taken.
 
 ```{r GraphRC, warning = F}
-ggplot(RCData, aes(x = Longitude, y = Latitude, col = RC_annual)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+ggplot(RCData, aes(x = Longitude, y = Latitude, col = RC_annual)) + 
+  geom_point(size = 2) + 
+  xlim(-180, 180) + ylim(-50, 80) + 
+  theme_bw()
 ```
 
 This is a similar graph, but instead of showing the root contribution, it shows the total annual soil respiration in grams of carbon per square meter. 
@@ -35,19 +38,28 @@ Note, this only includes sites with Rs values less than 5,000.
 Without filtering out some of the very high values that are likely due to measurement error, the color scale doesn't show anything.
 
 ```{r GraphRs, warning = F}
-ggplot(allData[Rs_annual <= 6000,], aes(x = Longitude, y = Latitude, col = Rs_annual)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+ggplot(allData[Rs_annual <= 6000,], aes(x = Longitude, y = Latitude, col = Rs_annual)) + 
+  geom_point(size = 2) + 
+  xlim(-180, 180) + ylim(-50, 80) + 
+  theme_bw()
 ```
 
 This is the mean annual temperature (MAT) in degrees Celsius, vs the location.
 
 ```{r GraphMAT, warning = F}
-ggplot(allData[MAT >= -20,], aes(x = Longitude, y = Latitude, col = MAT)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+ggplot(allData[MAT >= -20,], aes(x = Longitude, y = Latitude, col = MAT)) + 
+  geom_point(size = 2) + 
+  xlim(-180, 180) + ylim(-50, 80) + 
+  theme_bw()
 ```
 
 Similarly, this is the mean annual precipitation (MAP) in millimeters.
 
 ```{r GraphMAP, warning = F}
-ggplot(allData[MAP >= 0,], aes(x = Longitude, y = Latitude, col = MAP)) + geom_point(size = 2) + xlim(-180, 180) + ylim(-50, 80) + theme_bw()
+ggplot(allData[MAP >= 0,], aes(x = Longitude, y = Latitude, col = MAP)) + 
+  geom_point(size = 2) + 
+  xlim(-180, 180) + ylim(-50, 80) + 
+  theme_bw()
 ```
 
 ### Histograms of Relevent Data
@@ -72,13 +84,15 @@ hist(allData$Rs_annual[Rs_annual <= 5000], main = "Histogram of Annual Rs's", xl
 This is a histogram of the mean annual temperature values, in degrees Celsius.
 
 ```{r MATHistogram, message = F}
-hist(allData$MAT, main = "Histogram of Mean Annual Temperatures", xlab = "MAT (degrees C)", breaks = 40, col = "4") #makes the histogram
+hist(allData$MAT, main = "Histogram of Mean Annual Temperatures", 
+     xlab = "MAT (degrees C)", breaks = 40, col = "4") #makes the histogram
 ```
 
 This is a histogram of mean annual precipitation values, in millimeters.
 
 ```{r MAPHistogram, message = F}
-hist(allData$MAP, main = "Histogram of Mean Annual Precipitations", xlab = "MAP (millimeters)", breaks = 20, col = "4") #makes the histogram
+hist(allData$MAP, main = "Histogram of Mean Annual Precipitations",
+     xlab = "MAP (millimeters)", breaks = 20, col = "4") #makes the histogram
 ```
 
 ### Now this is just a relationship that I stumbled into and the graph looks cool
@@ -87,7 +101,10 @@ This is the relationship between the distance from the equator in degrees and me
 Everyone would expect their to be a relationship, but it turned out pretty well and I just like how the graph looks.
 
 ```{r LattitudeAndMAT, message = F, warning = F}
-ggplot(allData[MAT >= -20,], aes(x = abs(Latitude), y = MAT)) + geom_point(color = "4", size = 2) + theme_bw() + labs(x = "Distance from Equator (degrees)", y = "MAT (degrees C)")
+ggplot(allData[MAT >= -20,], aes(x = abs(Latitude), y = MAT)) + 
+  geom_point(color = "4", size = 2) + 
+  theme_bw() + 
+  labs(x = "Distance from Equator (degrees)", y = "MAT (degrees C)")
 ```
 
 That was fun.
