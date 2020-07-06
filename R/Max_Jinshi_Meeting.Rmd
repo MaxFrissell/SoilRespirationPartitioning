@@ -1,0 +1,75 @@
+---
+title: "Max_Jinshi_meeting"
+author: "Jinshi"
+date: "7/6/2020"
+output: html_document
+---
+
+```{r package}
+library(readxl)
+library(styler)
+library(ggplot2)
+theme_set(theme_bw())
+library(cowplot)
+library(tidyr)
+library(dplyr)
+library(data.table)
+library(lubridate)
+library(kableExtra)
+library(knitr)
+library(ggpubr)
+library(ggmap)
+library(maps)
+library(mapdata)
+library(RColorBrewer)
+# install.packages("patchwork")
+library(patchwork)
+# not in function
+'%!in%' <- function(x,y)!('%in%'(x,y))
+```
+
+
+```{r data processing}
+srdbv5 <- read.csv(here::here("Data", "srdb-data.csv"))
+```
+
+
+```{r plot annual Rs by measurement method}
+# Find out number of observations for each measurement method
+srdbv5 %>% 
+  select(Rs_annual, Meas_method) %>% 
+  na.omit() %>% 
+  filter(Rs_annual < 2000) %>% 
+  count(Meas_method)
+
+# plot your figure  
+srdbv5 %>% 
+  select(Rs_annual, Meas_method) %>% 
+  na.omit() %>% 
+  filter(Rs_annual < 2000) %>% 
+  filter(Meas_method %!in% c("", "Unknown", "Isotope", "Other")) %>% #filter those out (not too much data)
+  # count(Meas_method)
+  ggplot(aes(Meas_method, Rs_annual, fill = Meas_method)) +
+  geom_violin(draw_quantiles = c(0.5)) +
+  theme(legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30, vjust = 0.5)) +
+  scale_x_discrete(labels = c("AA(614)", "EC(12)", "Equation(13)", "GC(642)", "Gradient(39)", "IRGA(4134)")) +
+  scale_fill_discrete(breaks=c("Alkali absorption", "EC", "Equation", "Gas chromatography", "Gradient", "IRGA"),
+                        labels=c("AA", "EC", "Equation", "GC", "Gradient", "IRGA")) +
+  labs(y = expression(Annual~R[S]~(g~C~m^{-2}~yr^{-1}))) 
+```
+
+```{r plot RC by different partitioning method}
+srdbv5 %>% 
+  select(RC_annual, Partition_method, Manipulation) %>% 
+  na.omit() %>% 
+  filter(RC_annual < 1 & RC_annual > 0) %>% 
+  # filter(Manipulation == "None") %>% # this will filter out those measurements with treatment
+  count(Partition_method)
+
+# plot your figure
+
+```
+
+

@@ -46,3 +46,4 @@ data/*
 
 # OS files
 .DS_Store
+.Rproj.user
