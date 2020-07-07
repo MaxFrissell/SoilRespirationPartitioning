@@ -1,0 +1,104 @@
+---
+title: "Extracting from Worldclim2"
+date: "7/7/20"
+author: "Max Frissell"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+---
+
+```{r Packages, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(ggplot2)
+library(here)
+library(hexbin)
+
+# Note raster masks 'tidyr::extract' and 'dplyr::select'
+library(raster)
+library(sp)
+library(RColorBrewer)
+```
+
+```{r SRDBSetup, include = FALSE}
+# Selects which lines will be read (NULL = not read, NA = read) and reads them in from SRDB
+lines = c(rep("NULL", 10), NA, "NULL", "NULL", NA, NA, rep("NULL", 18), NA, NA, rep("NULL", 11), NA, rep("NULL", 5), NA, rep("NULL", 32))
+srdb = read.csv(here("Data", "srdb-data.csv"), colClasses = lines)
+```
+
+Plot of the global distribution of mean annual temperature (MAT) and precipitation (MAP). 
+The second also includes the values from all SRDB sites, plotted on top of the first graph.
+
+```{r PullingFromWC2}
+# Download worldclim data for precip and tmean if necessary, into w10/ folder
+precip <- getData("worldclim", path = here(), var = "prec", res = 10, download = !file.exists("wc10/prec1.hdr"))
+tmean <- getData("worldclim", path = here(), var = "tmean", res = 10, download = !file.exists("wc10/wc10/tmean1.hdr"))
+
+# Pull out cosore dataset latitudes and longitudes
+srdb %>%
+  dplyr::select(Site_ID, Longitude, Latitude) -> srdb_coords
+
+# MAP data that matches the srdb coordinates
+raster::extract(precip, srdb_coords[2:3]) -> precip_coords
+apply(precip_coords, 1, sum) -> map_WC
+cbind(srdb_coords, map_WC) -> map_coords
+
+# The same for MAT
+raster::extract(tmean, srdb_coords[2:3]) -> tmean_vals
+apply(tmean_vals, 1, mean) -> mat_WC
+cbind(map_coords, mat_WC)  %>%
+  # Temp data is stored in degC * 10, so we need to divide to get back to degC
+  mutate(mat_WC = mat_WC / 10) -> srdb_points
+
+# Extract global climate space data
+raster::as.data.frame(precip, xy = TRUE) %>%
+  drop_na() -> precip_global
+
+# Calculate annual sum for precip...
+precip_global %>%
+  dplyr::select(-x, -y) %>%
+  apply(1, sum) -> map_global
+
+raster::as.data.frame(tmean, xy = TRUE) %>%
+  drop_na() -> tmean_global
+
+# ...and mean for temperature
+tmean_global %>%
+  dplyr::select(-x, -y) %>%
+  apply(1, mean) -> mat_global
+
+# Create tibble with corresponding coordinates
+tibble(x = tmean_global$x, y = tmean_global$y, mat = as.vector(mat_global)) -> mat
+tibble(x = precip_global$x, y = precip_global$y, map = as.vector(map_global)) -> map
+
+left_join(map, mat, by = c("x", "y")) %>%
+  # Temp data is stored in degC * 10, so we need to divide to get back to degC
+  mutate(mat = mat / 10) -> map_mat_global
+
+# Just the global distribution of MAT and MAP
+p <- ggplot() +
+  geom_hex(data = map_mat_global,
+             aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
+  scale_fill_viridis_c(name = "Grid cells", begin = 0.85, end = 0) +
+  theme_minimal() +
+  labs(x = "MAT (°C)", y = "MAP (mm)")
+
+# With points from the SRDB sites
+withPoints <- ggplot() +
+  geom_hex(data = map_mat_global,
+             aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
+  scale_fill_viridis_c(name = "Grid cells", begin = 0.85, end = 0) +
+  geom_point(data = srdb_points, aes(x = mat_WC, y = map_WC),
+             color = "black", shape = 1, size = 1.5, na.rm = TRUE) +
+  theme_minimal() +
+  labs(x = "MAT (°C)", y = "MAP (mm)")
+
+print(p)
+print(withPoints)
+
+# Add the worldclim MAT and MAP values to the end of the srdb data
+allData = cbind(srdb, mat_WC, map_WC)
+```
