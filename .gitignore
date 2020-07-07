@@ -39,11 +39,15 @@ vignettes/*.pdf
 .Renviron
 
 # General data
-data/*
+Data/*
 
 # Output html files
 *.html
 
 # OS files
 .DS_Store
+
 .Rproj.user
+
+# Data downloaded from WorldClim2
+wc10/*
