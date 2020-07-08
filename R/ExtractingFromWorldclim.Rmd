@@ -126,6 +126,6 @@ attach(allData)
 ggplot(allData, aes(x = MAP_WC, y = MAP)) + 
   geom_point(size = 1.5, color = "chartreuse3") +
   theme_minimal() +
-  labs(title = "Comparing WorldClim2 MAPs to SRDB MAPs", x = "WorldClim2 MAP (°C)", y = "Reported SRDB MAP (°C)") +
+  labs(title = "Comparing WorldClim2 MAPs to SRDB MAPs", x = "WorldClim2 MAP (mm)", y = "Reported SRDB MAP (mm)") +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1)
 ```
