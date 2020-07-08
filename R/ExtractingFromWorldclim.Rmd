@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r Packages, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 library(dplyr)
 library(tidyr)
@@ -19,8 +19,6 @@ library(hexbin)
 
 # Note raster masks 'tidyr::extract' and 'dplyr::select'
 library(raster)
-library(sp)
-library(RColorBrewer)
 ```
 
 ```{r SRDBSetup, include = FALSE}
@@ -29,7 +27,9 @@ lines = c(rep("NULL", 10), NA, "NULL", "NULL", NA, NA, rep("NULL", 18), NA, NA, 
 srdb = read.csv(here("Data", "srdb-data.csv"), colClasses = lines)
 ```
 
-Plot of the global distribution of mean annual temperature (MAT) and precipitation (MAP). 
+## Pulling the Climate Data and Comparing the Distribution to that in the SRDB
+
+The first is a plot of the global distribution of mean annual temperature (MAT) and precipitation (MAP). 
 The second also includes the values from all SRDB sites, plotted on top of the first graph.
 
 ```{r PullingFromWC2}
@@ -43,15 +43,15 @@ srdb %>%
 
 # MAP data that matches the srdb coordinates
 raster::extract(precip, srdb_coords[2:3]) -> precip_coords
-apply(precip_coords, 1, sum) -> map_WC
-cbind(srdb_coords, map_WC) -> map_coords
+apply(precip_coords, 1, sum) -> MAP_WC
+cbind(srdb_coords, MAP_WC) -> map_coords
 
 # The same for MAT
 raster::extract(tmean, srdb_coords[2:3]) -> tmean_vals
-apply(tmean_vals, 1, mean) -> mat_WC
-cbind(map_coords, mat_WC)  %>%
+apply(tmean_vals, 1, mean) -> MAT_WC
+cbind(map_coords, MAT_WC)  %>%
   # Temp data is stored in degC * 10, so we need to divide to get back to degC
-  mutate(mat_WC = mat_WC / 10) -> srdb_points
+  mutate(MAT_WC = MAT_WC / 10) -> srdb_points
 
 # Extract global climate space data
 raster::as.data.frame(precip, xy = TRUE) %>%
@@ -91,7 +91,7 @@ withPoints <- ggplot() +
   geom_hex(data = map_mat_global,
              aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
   scale_fill_viridis_c(name = "Grid cells", begin = 0.85, end = 0) +
-  geom_point(data = srdb_points, aes(x = mat_WC, y = map_WC),
+  geom_point(data = srdb_points, aes(x = MAT_WC, y = MAP_WC),
              color = "black", shape = 1, size = 1.5, na.rm = TRUE) +
   theme_minimal() +
   labs(x = "MAT (°C)", y = "MAP (mm)")
@@ -99,6 +99,33 @@ withPoints <- ggplot() +
 print(p)
 print(withPoints)
 
+MAT_WC <- MAT_WC/10
 # Add the worldclim MAT and MAP values to the end of the srdb data
-allData = cbind(srdb, mat_WC, map_WC)
+allData = cbind(srdb, MAT_WC, MAP_WC)
+```
+
+## Comparing the WorldClim Climate Data to the Reported Data in the SRDB
+
+This is a graph comparing the mean annual temperature (MAT) reported by whoever made the entry in the SRDB to the MAT predicted by WorldClim2 for those coordinates.
+
+``` {r ComparingMAT}
+attach(allData)
+
+ggplot(allData, aes(x = MAT_WC, y = MAT)) + 
+  geom_point(size = 1.5, color = "chartreuse3") +
+  theme_minimal() +
+  labs(title = "Comparing WorldClim2 MATs to SRDB MATs", x = "WorldClim2 MAT (°C)", y = "Reported SRDB MAT (°C)") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1)
+```
+
+Now the same with mean annual precipitation (MAP).
+
+``` {r ComparingMAP}
+attach(allData)
+
+ggplot(allData, aes(x = MAP_WC, y = MAP)) + 
+  geom_point(size = 1.5, color = "chartreuse3") +
+  theme_minimal() +
+  labs(title = "Comparing WorldClim2 MAPs to SRDB MAPs", x = "WorldClim2 MAP (°C)", y = "Reported SRDB MAP (°C)") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1)
 ```
