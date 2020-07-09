@@ -1,11 +1,13 @@
 ---
 title: "Max_Jinshi_meeting"
-author: "Jinshi"
+author: "Jinshi and Max"
 date: "7/6/2020"
 output: html_document
 ---
 
-```{r package}
+```{r package, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
 library(readxl)
 library(styler)
 library(ggplot2)
@@ -29,7 +31,7 @@ library(patchwork)
 ```
 
 
-```{r data processing}
+```{r data processing, echo = FALSE}
 srdbv5 <- read.csv(here::here("Data", "srdb-data.csv"))
 ```
 
@@ -50,26 +52,37 @@ srdbv5 %>%
   filter(Meas_method %!in% c("", "Unknown", "Isotope", "Other")) %>% #filter those out (not too much data)
   # count(Meas_method)
   ggplot(aes(Meas_method, Rs_annual, fill = Meas_method)) +
-  geom_violin(draw_quantiles = c(0.5)) +
+  geom_violin(draw_quantiles = c(.25, 0.5, .75)) +
   theme(legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 30, vjust = 0.5)) +
   scale_x_discrete(labels = c("AA(614)", "EC(12)", "Equation(13)", "GC(642)", "Gradient(39)", "IRGA(4134)")) +
   scale_fill_discrete(breaks=c("Alkali absorption", "EC", "Equation", "Gas chromatography", "Gradient", "IRGA"),
                         labels=c("AA", "EC", "Equation", "GC", "Gradient", "IRGA")) +
-  labs(y = expression(Annual~R[S]~(g~C~m^{-2}~yr^{-1}))) 
+  labs(title = "Distribution of Annual Rs by Measurement method", y = expression(Annual~R[S]~(g~C~m^{-2}~yr^{-1})), x = "Measurement Method") # x label won't show up
 ```
 
 ```{r plot RC by different partitioning method}
 srdbv5 %>% 
   select(RC_annual, Partition_method, Manipulation) %>% 
   na.omit() %>% 
-  filter(RC_annual < 1 & RC_annual > 0) %>% 
-  # filter(Manipulation == "None") %>% # this will filter out those measurements with treatment
+  filter(RC_annual <= 1 & RC_annual >= 0) %>% 
+  filter(Manipulation == "None") %>% # this will filter out those measurements with treatment
   count(Partition_method)
 
 # plot your figure
-
+srdbv5 %>% 
+  select(RC_annual, Partition_method, Manipulation) %>% 
+  na.omit() %>% 
+  filter(RC_annual <= 1 & RC_annual >= 0) %>% 
+  filter(Partition_method %!in% c("", "Other", "Girdling", "TBCA")) %>% #filter those out (not too much data)
+  ggplot(aes(Partition_method, RC_annual, fill = Partition_method)) +
+  geom_violin(draw_quantiles = c(.25, 0.5, .75)) +
+  theme(legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30, vjust = 0.5)) +
+  scale_x_discrete(labels = c("Comparion(54)", "Exclusion(387)", "Extraction(110)", "Isotope(17)", "Model(29)", "Subtraction(57)")) +
+  scale_fill_discrete(breaks=c("Comparison", "Exclusion", "Extraction", "Isotope", "Model", "Subtraction"),
+                        labels=c("Comparison", "Exclusion", "Extraction", "Isotope", "Model", "Subtraction")) +
+  labs(title = "Distribution of Annual Root Contribution to Rs by Partitioning Method", y = expression(Annual~Root~Contribution~to~R[S]), x = "Partitioning Method") # x label still won't show up
 ```
-
-
