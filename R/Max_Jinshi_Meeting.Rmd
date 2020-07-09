@@ -54,12 +54,14 @@ srdbv5 %>%
   ggplot(aes(Meas_method, Rs_annual, fill = Meas_method)) +
   geom_violin(draw_quantiles = c(.25, 0.5, .75)) +
   theme(legend.title = element_blank(),
-        axis.title.x = element_blank(),
+        # axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 30, vjust = 0.5)) +
   scale_x_discrete(labels = c("AA(614)", "EC(12)", "Equation(13)", "GC(642)", "Gradient(39)", "IRGA(4134)")) +
   scale_fill_discrete(breaks=c("Alkali absorption", "EC", "Equation", "Gas chromatography", "Gradient", "IRGA"),
                         labels=c("AA", "EC", "Equation", "GC", "Gradient", "IRGA")) +
-  labs(title = "Distribution of Annual Rs by Measurement method", y = expression(Annual~R[S]~(g~C~m^{-2}~yr^{-1})), x = "Measurement Method") # x label won't show up
+  labs(title = "Distribution of Annual Rs by Measurement method", 
+       y = expression(Annual~R[S]~(g~C~m^{-2}~yr^{-1})), 
+       x = "Measurement Method") # x label won't show up
 ```
 
 ```{r plot RC by different partitioning method}
