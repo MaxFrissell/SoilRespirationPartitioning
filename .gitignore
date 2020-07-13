@@ -38,9 +38,6 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# General data
-Data/*
-
 # Output html files
 *.html
 
