@@ -1,6 +1,6 @@
 ---
 title: "Extracting from Worldclim2"
-date: "7/7/20"
+date: "7/13/20"
 author: "Max Frissell"
 output:
   prettydoc::html_pretty:
@@ -33,6 +33,8 @@ The first is a plot of the global distribution of mean annual temperature (MAT) 
 The second also includes the values from all SRDB sites, plotted on top of the first graph.
 
 ```{r PullingFromWC2}
+## This chunk pulls climate data from WorldClim2 and makes some graphs from the mean annual temperature and precipitation data
+
 # Download worldclim data for precip and tmean if necessary, into w10/ folder
 precip <- getData("worldclim", path = here(), var = "prec", res = 10, download = !file.exists("wc10/prec1.hdr"))
 tmean <- getData("worldclim", path = here(), var = "tmean", res = 10, download = !file.exists("wc10/wc10/tmean1.hdr"))
@@ -109,6 +111,8 @@ allData = cbind(srdb, MAT_WC, MAP_WC)
 This is a graph comparing the mean annual temperature (MAT) reported by whoever made the entry in the SRDB to the MAT predicted by WorldClim2 for those coordinates.
 
 ``` {r ComparingMAT}
+## Makes a graph comparing the mean annual temperatures in the SRDB and in their corresponding WorldClim2 values
+
 attach(allData)
 
 ggplot(allData, aes(x = MAT_WC, y = MAT)) + 
@@ -121,6 +125,8 @@ ggplot(allData, aes(x = MAT_WC, y = MAT)) +
 Now the same with mean annual precipitation (MAP).
 
 ``` {r ComparingMAP}
+## Makes a graph comparing the mean annual precupitations in the SRDB and in their corresponding WorldClim2 values
+
 attach(allData)
 
 ggplot(allData, aes(x = MAP_WC, y = MAP)) + 
