@@ -61,7 +61,7 @@ srdbv5 %>%
                         labels=c("AA", "EC", "Equation", "GC", "Gradient", "IRGA")) +
   labs(title = "Distribution of Annual Rs by Measurement method", 
        y = expression(Annual~R[S]~(g~C~m^{-2}~yr^{-1})), 
-       x = "Measurement Method") # x label won't show up
+       x = "Measurement Method")
 ```
 
 ```{r plot RC by different partitioning method}
@@ -86,5 +86,5 @@ srdbv5 %>%
   scale_x_discrete(labels = c("Comparion(54)", "Exclusion(387)", "Extraction(110)", "Isotope(17)", "Model(29)", "Subtraction(57)")) +
   labs(title = expression(Distribution~of~Annual~R[root]~Contribution~to~R[S]~by~Partitioning~Method),
        y = expression(Annual~R[root]~Contribution~to~R[S]),
-       x = "Partitioning Method") # x label still won't show up
+       x = "Partitioning Method") 
 ```
