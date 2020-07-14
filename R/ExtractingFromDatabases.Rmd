@@ -138,3 +138,87 @@ ggplot(allData, aes(x = MAP_WC, y = MAP)) +
   labs(title = "Comparing WorldClim2 MAPs to SRDB MAPs", x = "WorldClim2 MAP (mm)", y = "Reported SRDB MAP (mm)") +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1)
 ```
+
+## Pulling Mycorrhizae Data and Investigating it
+
+``` {r ExtractingMyco}
+## Extracts data on mycorrhizae for each SRDB point from global dataset from Soudzilovskaia et al. 2019
+## Note: the .TIF files used are not included in the repo and need to be downloaded from the "nasoudzilovskaia/Soudzilovskaia_NatureComm_MycoMaps" GitHub repo
+
+# Get all of the global data for each type of myco (again, files are pre-downloaded and not in the GitHub repo)
+am = raster(here("Data", "MycDistrAM_current.TIF"))
+em = raster(here("Data", "MycDistrEM_current.TIF"))
+er = raster(here("Data", "MycDistrER_current.TIF"))
+nm = raster(here("Data", "MycDistrNM_current.TIF"))
+
+# Extract the myco data for each coordinate pair in the SRDB database and add it to the rest of the data
+AM_percent = raster::extract(am, allData[, c(3, 2)])
+EM_precent = raster::extract(em, allData[, c(3, 2)])
+ER_precent = raster::extract(er, allData[, c(3, 2)])
+NM_precent = raster::extract(nm, allData[, c(3, 2)])
+allData = cbind(allData, AM_percent, EM_precent, ER_precent, NM_precent)
+
+# Throw out the entries where there isn't myco data
+allData = allData[!is.na(allData$AM_percent),]
+```
+
+These are plots of the percentage of plants that use difference kinds of mycorrhizae (the last being none) for each of the SRDB sites.
+
+``` {r MycoGraphs}
+## Plot the myco percentages with latitude and longitude.
+
+ggplot(allData, aes(x = Longitude, y = Latitude, col = AM_percent)) + 
+  geom_point(size = 1.5) + 
+  lims(x = c(-180, 180), y = c(-50, 80), color = c(0, 100)) + 
+  theme_minimal()
+
+ggplot(allData, aes(x = Longitude, y = Latitude, col = EM_precent)) + 
+  geom_point(size = 1.5) + 
+  lims(x = c(-180, 180), y = c(-50, 80), color = c(0, 100)) + 
+  theme_minimal()
+
+ggplot(allData, aes(x = Longitude, y = Latitude, col = ER_precent)) + 
+  geom_point(size = 1.5) + 
+  lims(x = c(-180, 180), y = c(-50, 80), color = c(0, 100)) + 
+  theme_minimal()
+
+ggplot(allData, aes(x = Longitude, y = Latitude, col = NM_precent)) + 
+  geom_point(size = 1.5) + 
+  lims(x = c(-180, 180), y = c(-50, 80), color = c(0, 100)) + 
+  theme_minimal()
+```
+
+This is a comparison of how the abundance of the different mycorrhizae types changes with mean annual temperature.
+
+``` {r Myco&MAT}
+## Plot the myco percentages vs MAT
+
+ggplot(allData, aes(x = MAT_WC, y = AM_percent)) + 
+  geom_point(size = 1.5, color = "chartreuse3") + 
+  theme_minimal()
+
+ggplot(allData, aes(x = MAT_WC, y = EM_precent)) + 
+  geom_point(size = 1.5, color = "chartreuse3") + 
+  theme_minimal()
+
+ggplot(allData, aes(x = MAT_WC, y = ER_precent)) + 
+  geom_point(size = 1.5, color = "chartreuse3") + 
+  theme_minimal()
+
+ggplot(allData, aes(x = MAT_WC, y = NM_precent)) + 
+  geom_point(size = 1.5, color = "chartreuse3") + 
+  theme_minimal()
+```
+
+As you can see, there seem to be noticeable, but weak, correlations.
+
+None of these seem to show correlations with mean annual precipitation, with the exception of ER mycorrhizae.
+
+``` {r Myco&MAP}
+## Plot the ER myco precentage vs MAP
+## ER is the only one that showed any visible correlation
+
+ggplot(allData, aes(x = MAP_WC, y = ER_precent)) + 
+  geom_point(size = 1.5, color = "chartreuse3") + 
+  theme_minimal()
+```
