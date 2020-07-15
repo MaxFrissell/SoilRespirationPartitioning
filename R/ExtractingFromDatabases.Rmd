@@ -27,7 +27,7 @@ lines = c(rep("NULL", 10), NA, "NULL", "NULL", NA, NA, rep("NULL", 18), NA, NA, 
 
 srdbFull = read.csv(here("Data", "srdb-data.csv"), colClasses = lines)
 attach(srdbFull)
-srdb = srdbFull[!is.na(RC_annual) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual),]
+srdb = srdbFull[RC_annual >= 0 & RC_annual <= 1 & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual),]
 ```
 
 ## Pulling the Climate Data and Comparing the Distribution to that in the SRDB
@@ -222,3 +222,42 @@ ggplot(allData, aes(x = MAP_WC, y = ER_precent)) +
   geom_point(size = 1.5, color = "chartreuse3") + 
   theme_minimal()
 ```
+
+## Pulling Global Biomass Data and Investigating it
+
+``` {r ExtractingBiomass}
+## Extracts data on above and below ground biomass for each SRDB point from global dataset from Spawn et al. 2020
+## Note: the .TIF files used are not included in the repo and need to be downloaded from the "sethspawn/globalBiomassC" GitHub repo
+
+raster(here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
+  raster::extract(allData[, c(3, 2)]) -> BM_aboveground
+
+raster(here("Data", "belowground_biomass_carbon_2010.tif")) %>%
+  raster::extract(allData[, c(3, 2)]) -> BM_belowground
+
+# Add these biomass values to the larger dataset
+allData = cbind(allData, BM_aboveground, BM_belowground)
+
+# Remove values where there are no biomass data
+allData = allData[!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground),]
+```
+
+These are maps of the above and below ground biomasses at all of the sites in the SRDB.
+
+There is also a summary of all of the data so far.
+
+``` {r BiomassMaps}
+## Creates a map with the values of above/below ground biomas data at each SRDB site
+
+ggplot(allData, aes(x = Longitude, y = Latitude, col = BM_aboveground)) +
+  geom_point(size = 1.5) +
+  theme_minimal()
+
+ggplot(allData, aes(x = Longitude, y = Latitude, col = BM_belowground)) +
+  geom_point(size = 1.5) +
+  theme_minimal()
+
+summary(allData)
+```
+
+I searched for some correlations between the biomass values and some of the other data, like MAT, MAP, root contribution, and Rs, but I didn't really find anything.
