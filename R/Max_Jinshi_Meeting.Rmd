@@ -33,6 +33,7 @@ library(patchwork)
 
 ```{r data processing, echo = FALSE}
 srdbv5 <- read.csv(here::here("Data", "srdb-data.csv"))
+IGBP_Koppen_MODIS <- read.csv(here::here("Data", "IGBP_Koppen_MODIS.csv"))
 ```
 
 
@@ -64,6 +65,7 @@ srdbv5 %>%
        x = "Measurement Method")
 ```
 
+
 ```{r plot RC by different partitioning method}
 srdbv5 %>% 
   select(RC_annual, Partition_method, Manipulation) %>% 
@@ -88,3 +90,20 @@ srdbv5 %>%
        y = expression(Annual~R[root]~Contribution~to~R[S]),
        x = "Partitioning Method") 
 ```
+
+
+```{r link Climate and vegetation}
+# Need to update latitude and longitude
+# Change Latitude and Longitude to 0.5*0.5 resolution
+srdbv5 %>% 
+  mutate(Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitude*2)/2+0.25) -> 
+  srdbv5
+
+srdbv5 %>% 
+  select(Latitude, Latitude2, Longitude, Longitude2)
+
+# Get Ecosystem class, MAT and MAP for srdb data
+left_join(srdbv5, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> 
+  srdbv5
+```
+
