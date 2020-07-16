@@ -22,12 +22,12 @@ library(raster)
 ```
 
 ```{r SRDBSetup, include = FALSE}
-# Selects which lines will be read (NULL = not read, NA = read) and reads them in from SRDB
-lines = c(rep("NULL", 10), NA, "NULL", "NULL", NA, NA, rep("NULL", 18), NA, NA, rep("NULL", 11), NA, rep("NULL", 5), NA, rep("NULL", 32))
+## Selects the lines I want to use from the SRDB
 
-srdbFull = read.csv(here("Data", "srdb-data.csv"), colClasses = lines)
-attach(srdbFull)
-srdb = srdbFull[RC_annual >= 0 & RC_annual <= 1 & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual),]
+# Read in entire SRDB and pull only desired columns, removing rows with missing values
+read.csv(here("Data", "srdb-data.csv")) %>%
+  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, MAT, MAP, Rs_annual, Rh_annual, RC_annual) %>%
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & Leaf_habit != "" & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual >= 0 & RC_annual <= 1) -> srdb
 ```
 
 ## Pulling the Climate Data and Comparing the Distribution to that in the SRDB
