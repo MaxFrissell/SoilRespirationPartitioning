@@ -34,6 +34,20 @@ library(patchwork)
 ```{r data processing, echo = FALSE}
 srdbv5 <- read.csv(here::here("Data", "srdb-data.csv"))
 IGBP_Koppen_MODIS <- read.csv(here::here("Data", "IGBP_Koppen_MODIS.csv"))
+
+# using mutate and case_when regroup climate
+IGBP_Koppen_MODIS %>% 
+  mutate(MiddleClimate = case_when(
+    ClimateTypes %in% c("Af", "Am", "As", "Aw") ~ "A",
+    ClimateTypes %in% c("BSh", "BSk", "BWh", "BWk") ~ "B",
+    ClimateTypes %in% c("Cfa", "Cfb", "Cfc") ~ "Cf",
+    ClimateTypes %in% c("Csa", "Csb", "Csc") ~ "Cs",
+    ClimateTypes %in% c("Cwa", "Cwb", "Cwc") ~ "Cw",
+    ClimateTypes %in% c("Dfa", "Dfb", "Dfc", "Dfd") ~ "Df",
+    ClimateTypes %in% c("Dsa", "Dsb", "Dsc", "Dwa", "Dwb", "Dwc", "Dwd") ~ "Dsw",
+    ClimateTypes %in% c("EF", "ET") ~ "E",
+    TRUE ~ "Other")) ->
+  IGBP_Koppen_MODIS
 ```
 
 
