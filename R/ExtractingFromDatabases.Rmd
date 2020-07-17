@@ -256,8 +256,6 @@ ggplot(allData, aes(x = Longitude, y = Latitude, col = BM_aboveground)) +
 ggplot(allData, aes(x = Longitude, y = Latitude, col = BM_belowground)) +
   geom_point(size = 1.5) +
   theme_minimal()
-
-summary(allData)
 ```
 
 I searched for some correlations between the biomass values and some of the other data, like MAT, MAP, root contribution, and Rs, but I didn't really find anything.
