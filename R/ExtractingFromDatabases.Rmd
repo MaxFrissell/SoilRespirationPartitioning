@@ -209,7 +209,7 @@ ggplot(allData, aes(x = MAT_WC, y = MAP_WC, col = Leaf_habit)) +
 
 ``` {r ExtractingMyco}
 ## Extracts data on mycorrhizae for each SRDB point from global dataset from Soudzilovskaia et al. 2019
-## Note: the .TIF files used are not included in the repo and need to be downloaded from the "nasoudzilovskaia/Soudzilovskaia_NatureComm_MycoMaps" GitHub repo
+## Note: the .TIF files used here are not included in the repo and were downloaded from https://github.com/nasoudzilovskaia/Soudzilovskaia_NatureComm_MycoMaps/tree/master/Maps_Myco_veg_current on 7/14/20
 
 # Get all of the global data for each type of myco (again, files are pre-downloaded and not in the GitHub repo)
 am = raster(here("Data", "MycDistrAM_current.TIF"))
