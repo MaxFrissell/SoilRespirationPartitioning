@@ -315,7 +315,7 @@ ggplot(allData, aes(x = Leaf_habit, y = NM_percent, fill = Leaf_habit)) +
 
 ``` {r ExtractingBiomass}
 ## Extracts data on above and below ground biomass for each SRDB point from global dataset from Spawn et al. 2020
-## Note: the .TIF files used are not included in the repo and need to be downloaded from the "sethspawn/globalBiomassC" GitHub repo
+## Note: the .TIF files used are not included in the repo and were downloaded from https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1763 on 7/15/20
 
 raster(here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_aboveground
