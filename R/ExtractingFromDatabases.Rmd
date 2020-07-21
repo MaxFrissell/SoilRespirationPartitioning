@@ -364,3 +364,14 @@ ggplot(allData, aes(x = Leaf_habit, y = BM_belowground, fill = Leaf_habit)) +
   geom_violin(draw_quantiles = c(.25, .5, .75)) +
   theme_minimal()
 ```
+
+``` {r ExtractingNDep}
+## Extracts N deposition data for each srdb point
+
+# Pull N-dep values for every coordinate pair in the SRDB
+raster(here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
+  raster::extract(allData[, c(3, 2)]) -> N_dep_1993
+
+# Add this to the data pool and remove entries without N-dep data
+allData <- cbind(allData, N_dep_1993)[!is.na(N_dep_1993),]
+```
