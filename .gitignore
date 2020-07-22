@@ -52,3 +52,7 @@ wc10/*
 # Large, binary data files that GitHub isn't good at/isn't built for storing
 *.tif
 *.TIF
+
+# Cashed R data
+*_cache
+*_files
