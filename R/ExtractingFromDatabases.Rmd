@@ -16,6 +16,7 @@ library(magrittr)
 library(ggplot2)
 library(here)
 library(hexbin)
+library(cowplot)
 
 # Note raster masks 'tidyr::extract' and 'dplyr::select'
 library(raster)
