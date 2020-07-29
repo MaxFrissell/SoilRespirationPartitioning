@@ -98,11 +98,10 @@ srdbv5 %>%
   geom_violin(draw_quantiles = c(.25, 0.5, .75)) +
   theme(legend.title = element_blank(),
         # axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 30, vjust = 0.5)) +
+        axis.text.x = element_text(angle = 30, vjust = .5)) +
   scale_x_discrete(labels = c("Comparion(54)", "Exclusion(387)", "Extraction(110)", "Isotope(17)", "Model(29)", "Subtraction(57)")) +
-  labs(title = expression(Distribution~of~Annual~R[root]~Contribution~to~R[S]~by~Partitioning~Method),
-       y = expression(Annual~R[root]~Contribution~to~R[S]),
-       x = "Partitioning Method") 
+  labs(y = expression(Annual~R[root]~Contribution~to~R[S]),
+       x = "Partitioning Method") -> plot1
 ```
 
 
@@ -121,3 +120,36 @@ left_join(srdbv5, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2"
   srdbv5
 ```
 
+``` {r RCbyClimateAndVeg}
+srdbv5 %>% 
+  filter(!is.na(MiddleClimate)) %>%
+  ggplot(aes(x = MiddleClimate, y = RC_annual, fill = MiddleClimate)) +
+  geom_violin(draw_quantiles = c(.25, .5, .75)) +
+  theme(legend.title = element_blank()) +
+  theme_minimal() -> plot2
+
+srdbv5 %>% 
+  filter(!is.na(Ecosystem)) %>% 
+  filter(!is.na(RC_annual)) %>%
+  ggplot(aes(x = Ecosystem, y = RC_annual, fill = Ecosystem)) +
+  geom_violin(draw_quantiles = c(.25, .5, .75)) +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        # axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30, vjust = .5)) -> plot3
+
+srdbv5 %>% 
+  filter(!is.na(Ecosystem_type)) %>% 
+  filter(!is.na(RC_annual)) %>%
+  filter(Ecosystem_type != "Orchard" & Ecosystem_type != "Urban") %>% # Filter out categories with not enough RC_annual data
+  ggplot(aes(x = Ecosystem_type, y = RC_annual, fill = Ecosystem_type)) +
+  geom_violin(draw_quantiles = c(.25, .5, .75)) +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        # axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30, vjust = 0.5)) -> plot4
+```
+
+```{r 4In1Plot}
+plot_grid(plot1, plot2, plot3, plot4)
+```
