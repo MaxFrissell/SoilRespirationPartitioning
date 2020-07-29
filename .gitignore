@@ -43,7 +43,6 @@ vignettes/*.pdf
 
 # OS files
 .DS_Store
-
 .Rproj.user
 
 # Data downloaded from WorldClim2
@@ -52,6 +51,7 @@ wc10/*
 # Large, binary data files that GitHub isn't good at/isn't built for storing
 *.tif
 *.TIF
+*.geotiff
 
 # Cashed R data
 *_cache
