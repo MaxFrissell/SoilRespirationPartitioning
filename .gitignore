@@ -52,6 +52,7 @@ wc10/*
 *.tif
 *.TIF
 *.geotiff
+*.geotif
 
 # Cashed R data
 *_cache
