@@ -16,8 +16,8 @@ library(magrittr)
 library(ggplot2)
 library(here)
 library(hexbin)
-
-# Note raster masks 'tidyr::extract' and 'dplyr::select'
+library(SpatialEpi)
+library(plyr)
 library(raster)
 ```
 
@@ -25,7 +25,7 @@ library(raster)
 ## Selects the lines I want to use from the SRDB
 
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
-read.csv(here("Data", "srdb-data.csv")) %>%
+read.csv(here::here("Data", "srdb-data.csv")) %>%
   dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, MAT, MAP, Rs_annual, Rh_annual, RC_annual) %>%
   subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual >= 0 & RC_annual <= 1) -> srdb
 ```
@@ -63,8 +63,8 @@ The second also includes the values from all SRDB sites, plotted on top of the f
 ## This chunk pulls climate data from WorldClim2 and makes some graphs from the mean annual temperature and precipitation data
 
 # Download worldclim data for precip and tmean if necessary, into w10/ folder
-precip <- getData("worldclim", path = here(), var = "prec", res = 10, download = !file.exists("wc10/prec1.hdr"))
-tmean <- getData("worldclim", path = here(), var = "tmean", res = 10, download = !file.exists("wc10/wc10/tmean1.hdr"))
+precip <- getData("worldclim", path = here::here(), var = "prec", res = 10, download = !file.exists("wc10/prec1.hdr"))
+tmean <- getData("worldclim", path = here::here(), var = "tmean", res = 10, download = !file.exists("wc10/wc10/tmean1.hdr"))
 
 # Pull out cosore dataset latitudes and longitudes
 srdb %>%
@@ -212,10 +212,10 @@ ggplot(allData, aes(x = MAT_WC, y = MAP_WC, col = Leaf_habit)) +
 ## Note: the .TIF files used here are not included in the repo and were downloaded from https://github.com/nasoudzilovskaia/Soudzilovskaia_NatureComm_MycoMaps/tree/master/Maps_Myco_veg_current on 7/14/20
 
 # Get all of the global data for each type of myco (again, files are pre-downloaded and not in the GitHub repo)
-am = raster(here("Data", "MycDistrAM_current.TIF"))
-em = raster(here("Data", "MycDistrEM_current.TIF"))
-er = raster(here("Data", "MycDistrER_current.TIF"))
-nm = raster(here("Data", "MycDistrNM_current.TIF"))
+am = raster(here::here("Data", "MycDistrAM_current.TIF"))
+em = raster(here::here("Data", "MycDistrEM_current.TIF"))
+er = raster(here::here("Data", "MycDistrER_current.TIF"))
+nm = raster(here::here("Data", "MycDistrNM_current.TIF"))
 
 # Extract the myco data for each coordinate pair in the SRDB database and add it to the rest of the data
 AM_percent = raster::extract(am, allData[, c(3, 2)])
@@ -317,10 +317,10 @@ ggplot(allData, aes(x = Leaf_habit, y = NM_percent, fill = Leaf_habit)) +
 ## Extracts data on above and below ground biomass for each SRDB point from global dataset from Spawn et al. 2020
 ## Note: the .TIF files used are not included in the repo and were downloaded from https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1763 on 7/15/20
 
-raster(here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
+raster(here::here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_aboveground
 
-raster(here("Data", "belowground_biomass_carbon_2010.tif")) %>%
+raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_belowground
 
 # Add these biomass values to the larger dataset
@@ -371,7 +371,7 @@ ggplot(allData, aes(x = Leaf_habit, y = BM_belowground, fill = Leaf_habit)) +
 ## Extracts N deposition data for each srdb point
 
 # Pull N-dep values for every coordinate pair in the SRDB
-raster(here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
+raster(here::here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
   raster::extract(allData[, c(3, 2)]) -> N_dep_1993
 
 # Add this to the data pool and remove entries without N-dep data
@@ -412,4 +412,25 @@ ggplot(allData, aes(x = N_dep_1993, y = ER_percent)) +
 ggplot(allData, aes(x = Leaf_habit, y = N_dep_1993, fill = Leaf_habit)) +
   geom_violin(draw_quantiles = c(.25, .5, .75)) +
   theme_minimal()
+```
+
+``` {r ExtractFromSoilGrids}
+## Extract data on bulk density, clay content, soil type, and organic carbon stock from SoilGrids
+## Note: These files are not in the repository and were downloaded through the ISRIC file service at https://files.isric.org/public/sg250m/ between 7/24/20 and 7/30/20
+## This tool can be a struggle to use, you can email me at maxfrissell@gmail.com and I can try to send it to you if you can't get it to work
+
+# Convert lat, long degree coordinates into meter coordinates
+cbind(allData$Longitude, allData$Latitude) %>%
+  latlong2grid() %>%
+  round() * 1000 %>%
+  round_any(250) -> coordsInM
+
+# Extract bulk density values for the coordinates
+raster(here::here("Data", "bdod_5-15cm_Q0.5.vrt")) %>%
+  raster::extract(coordsInM) -> Bulk_density
+
+# Add this data to the main dataframe
+allData = cbind(allData, coordsInM, Bulk_density)
+summary(allData)
+allData
 ```
