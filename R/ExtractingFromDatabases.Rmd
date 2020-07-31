@@ -416,3 +416,30 @@ ggplot(allData, aes(x = Leaf_habit, y = N_dep_1993, fill = Leaf_habit)) +
   geom_violin(draw_quantiles = c(.25, .5, .75)) +
   theme_minimal()
 ```
+
+``` {r ExtractingIGBP}
+## Extracts climate and vegetation data from IGBP Koppen MODIS
+
+IGBP_Koppen_MODIS <- read.csv(here::here("Data", "IGBP_Koppen_MODIS.csv"))
+
+# Regroup climate data into fewer categories for easier analysis
+IGBP_Koppen_MODIS %>% 
+  mutate(MiddleClimate = case_when(
+    ClimateTypes %in% c("Af", "Am", "As", "Aw") ~ "A",
+    ClimateTypes %in% c("BSh", "BSk", "BWh", "BWk") ~ "B",
+    ClimateTypes %in% c("Cfa", "Cfb", "Cfc") ~ "Cf",
+    ClimateTypes %in% c("Csa", "Csb", "Csc") ~ "Cs",
+    ClimateTypes %in% c("Cwa", "Cwb", "Cwc") ~ "Cw",
+    ClimateTypes %in% c("Dfa", "Dfb", "Dfc", "Dfd") ~ "Df",
+    ClimateTypes %in% c("Dsa", "Dsb", "Dsc", "Dwa", "Dwb", "Dwc", "Dwd") ~ "Dsw",
+    ClimateTypes %in% c("EF", "ET") ~ "E",
+    TRUE ~ "Other")) -> IGBP_Koppen_MODIS
+
+# Change Latitude and Longitude to the same 0.5*0.5 resolution as in the dataset
+mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitude*2)/2+0.25) -> allData
+
+# Add data to the large dataset
+left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
+
+summary(allData)
+```
