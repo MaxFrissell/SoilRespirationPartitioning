@@ -29,8 +29,8 @@ library(raster)
 
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
-  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, MAT, MAP, Rs_annual, Rh_annual, RC_annual) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual >= 0 & RC_annual <= 1) -> srdb
+  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, MAT, MAP, Rs_annual, Rh_annual, RC_annual, Manipulation) %>%
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual >= 0 & RC_annual <= 1 & Manipulation == "None") -> srdb
 ```
 
 ## Investigating Data included in the SRDB
@@ -415,25 +415,4 @@ ggplot(allData, aes(x = N_dep_1993, y = ER_percent)) +
 ggplot(allData, aes(x = Leaf_habit, y = N_dep_1993, fill = Leaf_habit)) +
   geom_violin(draw_quantiles = c(.25, .5, .75)) +
   theme_minimal()
-```
-
-``` {r ExtractFromSoilGrids}
-## Extract data on bulk density, clay content, soil type, and organic carbon stock from SoilGrids
-## Note: These files are not in the repository and were downloaded through the ISRIC file service at https://files.isric.org/public/sg250m/ between 7/24/20 and 7/30/20
-## This tool can be a struggle to use, you can email me at maxfrissell@gmail.com and I can try to send it to you if you can't get it to work
-
-# Convert lat, long degree coordinates into meter coordinates
-cbind(allData$Longitude, allData$Latitude) %>%
-  latlong2grid() %>%
-  round() * 1000 %>%
-  round_any(250) -> coordsInM
-
-# Extract bulk density values for the coordinates
-raster(file.choose()) %>%
-  raster::extract(coordsInM) -> Bulk_density
-
-# Add this data to the main dataframe
-allData = cbind(allData, coordsInM, Bulk_density)
-summary(allData)
-allData
 ```
