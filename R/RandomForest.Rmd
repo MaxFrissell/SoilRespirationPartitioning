@@ -1,7 +1,7 @@
 ---
 title: "Predicting Rs Partitioning Using Random Forest Modeling"
 author: "Max Frissell"
-date: "7/31/2020"
+date: "8/3/2020"
 output: html_document
 ---
 
@@ -19,6 +19,9 @@ library(cowplot)
 library(SpatialEpi)
 library(plyr)
 library(raster)
+library(randomForest)
+library(caret)
+library(e1071)
 ```
 
 ```{r SRDBSetup, include = FALSE}
@@ -132,4 +135,30 @@ left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2
 
 # Remove data I don't want anymore and NAs
 allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
+```
+
+``` {r RandomForest}
+## Use random forest machine learning to create a model to predict Rs partitioning
+
+# Split data into a set to train the model and a set to test approx. 70/30 split
+samp = sample(2, nrow(allData), replace = TRUE, prob = c(.7, .3))
+train = allData[samp == 1,]
+test = allData[samp == 2,]
+
+summary(train)
+summary(test)
+
+# Make a random forest model
+model = randomForest(RC_annual ~
+                       Latitude + Longitude +
+                       Leaf_habit + Rs_annual +
+                       MAT + MAP +
+                       AM_percent + EM_percent + ER_percent + NM_percent +
+                       BM_aboveground + BM_belowground +
+                       N_dep_1993 +
+                       IGBP_group + Ecosystem2 + MiddleClimate,
+                     data = train,
+                     importance = TRUE, 
+                     proximity = TRUE,
+                     na.action = na.exclude)
 ```
