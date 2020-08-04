@@ -16,7 +16,6 @@ theme_set(theme_minimal())
 library(here)
 library(hexbin)
 library(cowplot)
-library(SpatialEpi)
 library(plyr)
 library(raster)
 library(randomForest)
@@ -145,9 +144,6 @@ samp = sample(2, nrow(allData), replace = TRUE, prob = c(.7, .3))
 train = allData[samp == 1,]
 test = allData[samp == 2,]
 
-summary(train)
-summary(test)
-
 # Make a random forest model
 model = randomForest(RC_annual ~
                        Latitude + Longitude +
@@ -161,4 +157,70 @@ model = randomForest(RC_annual ~
                      importance = TRUE, 
                      proximity = TRUE,
                      na.action = na.exclude)
+```
+
+``` {r InvestigateModelWithTrain}
+## Investigate how well the model works at predicting training data RC
+
+# Use this model to predict RC values for the training data and put it all in one dataframe
+prediction = predict(model, train)
+trainWithP = cbind(train, prediction)
+
+# Plot training data RC values and the predicted values from the model
+ggplot(trainWithP, aes(x = RC_annual, y = prediction)) +
+  lims(y = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals = trainWithP$RC_annual - trainWithP$prediction
+trainWithP = cbind(trainWithP, residuals)
+ggplot(trainWithP, aes(x = prediction, y = residuals)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+
+# Get the average error for the RC predictions
+abs(residuals) %>%
+  na.omit() %>%
+  sum()/length(residuals) -> average
+```
+
+The average prediction  for the training data has an error of `r average`.
+
+``` {r InvestigateModelWithTest}
+## Investigate how well the model works at predicting test data RC
+
+# Use the model to predict RC for the data we set aside
+prediction = predict(model, test)
+testWithP = cbind(test, prediction)
+
+# Plot test data RC values with their predicted values
+ggplot(testWithP, aes(x = RC_annual, y = prediction)) +
+  lims(y = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals = testWithP$RC_annual - testWithP$prediction
+testWithP = cbind(testWithP, residuals)
+ggplot(testWithP, aes(x = prediction, y = residuals)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+
+# Get the average error for the RC predictions
+abs(residuals) %>%
+  na.omit() %>%
+  sum()/length(residuals) -> average
+```
+
+The average prediction for the testing data has an error of `r average`
+
+``` {r WhichParametersMatter}
+## Makes plots showing which of the predictors matter and how often they're used
+
+varImpPlot(model)
+print("Latitude Longitude Leaf_habit Rs_annual MAT MAP AM_percent EM_percent ER_percent NM_percent BM_aboveground BM_belowground N_dep_1993 IGBP_group Ecosystem2 MiddleClimate")
+varUsed(model)
 ```
