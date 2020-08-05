@@ -29,7 +29,7 @@ library(e1071)
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
   dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, Rs_annual, Rh_annual, RC_annual, Manipulation) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual >= 0 & RC_annual <= 1 & Manipulation == "None") -> srdb
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
 ```
 
 ```{r PullingFromWC2}
@@ -139,14 +139,27 @@ allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, Cl
 ``` {r RandomForest}
 ## Use random forest machine learning to create a model to predict Rs partitioning
 
+# Add the absolue value of latitude to the dataset
+absLat = abs(allData$Latitude)
+allData = cbind(allData, absLat)
+
 # Split data into a set to train the model and a set to test approx. 70/30 split
 samp = sample(2, nrow(allData), replace = TRUE, prob = c(.7, .3))
 train = allData[samp == 1,]
 test = allData[samp == 2,]
 
+# This fixes a problem, don't ask me why, I have no idea
+train = train[!is.na(train$RC_annual) & !is.na(train$absLat) &
+!is.na(train$Leaf_habit) & !is.na(train$Rs_annual) &
+!is.na(train$MAT) & !is.na(train$MAP) &
+!is.na(train$AM_percent) & !is.na(train$EM_percent) & !is.na(train$ER_percent) & !is.na(train$NM_percent) &
+!is.na(train$BM_aboveground) & !is.na(train$BM_belowground) &
+!is.na(train$N_dep_1993) &
+!is.na(train$IGBP_group) & !is.na(train$Ecosystem2) & !is.na(train$MiddleClimate),]
+
 # Make a random forest model
 model = randomForest(RC_annual ~
-                       Latitude + Longitude +
+                       absLat +
                        Leaf_habit + Rs_annual +
                        MAT + MAP +
                        AM_percent + EM_percent + ER_percent + NM_percent +
@@ -186,7 +199,7 @@ abs(residuals) %>%
   sum()/length(residuals) -> average
 ```
 
-The average prediction  for the training data has an error of `r average`.
+The average prediction for the training data has a residual of `r average`.
 
 ``` {r InvestigateModelWithTest}
 ## Investigate how well the model works at predicting test data RC
@@ -215,12 +228,111 @@ abs(residuals) %>%
   sum()/length(residuals) -> average
 ```
 
-The average prediction for the testing data has an error of `r average`
+The average prediction for the testing data has a residual of `r average`
 
 ``` {r WhichParametersMatter}
 ## Makes plots showing which of the predictors matter and how often they're used
 
 varImpPlot(model)
-print("Latitude Longitude Leaf_habit Rs_annual MAT MAP AM_percent EM_percent ER_percent NM_percent BM_aboveground BM_belowground N_dep_1993 IGBP_group Ecosystem2 MiddleClimate")
+print("Absolue value of of Latitude, Leaf_habit, Rs_annual, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate")
 varUsed(model)
 ```
+
+``` {r ModelTuning}
+## This Will investigate certain facets of the model and tweak how it was made to hopefully make more accurate predictions
+
+# Plot how much adding more trees affected the accuracy
+plot(model)
+
+# Tune with different mtry values
+tuneRF(subset(train, select = -c(RC_annual, Site_ID, Longitude, Latitude, Rh_annual, Manipulation)), 
+       train[, 7],
+       stepFactor = 2,
+       plot = TRUE,
+       ntreetry = 200, # Based on the plot above, 200 trees seems reasonable
+       trace = TRUE,
+       improve = .01)
+```
+
+200 trees and an mtry of 3 seem the best the most often in this test.
+Sometimes an mtry of 5 looks better, but when it does 3 is usually close behind.
+
+But, through messing with the mtry values when actually making another RF model, mtry values from 20-75 seem to be the best, lowering error by 5-10% on average.
+Despite this, I can never get this tuning function to show me that they work better, but they really seem to.
+
+``` {r RemakeModel}
+## Make another RF model with the same data, using the values of mtry and # of trees that seem like they work the best
+
+improvedModel = randomForest(RC_annual ~
+                       absLat +
+                       Leaf_habit + Rs_annual +
+                       MAT + MAP +
+                       AM_percent + EM_percent + ER_percent + NM_percent +
+                       BM_aboveground + BM_belowground +
+                       N_dep_1993 +
+                       IGBP_group + Ecosystem2 + MiddleClimate,
+                     data = train,
+                     ntree = 200,
+                     mtry = 40,
+                     importance = TRUE, 
+                     proximity = TRUE,
+                     na.action = na.exclude)
+```
+
+``` {r PredictTrain}
+## Use the model to predict RC values in the training data
+
+# Predict values
+prediction2 = predict(improvedModel, train)
+trainWithP = cbind(trainWithP, prediction2)
+
+# Plot predictions vs true values
+ggplot(trainWithP, aes(x = RC_annual, y = prediction2)) +
+  lims(y = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals2 = trainWithP$RC_annual - trainWithP$prediction2
+trainWithP = cbind(trainWithP, residuals2)
+ggplot(trainWithP, aes(x = prediction2, y = residuals2)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+
+# Get the average error for the RC predictions
+abs(residuals2) %>%
+  na.omit() %>%
+  sum()/length(residuals2) -> average
+```
+
+The average prediction for the training data has a residual of `r average`.
+
+``` {r PredictTest}
+## Use the model to predict RC values in the testing data
+
+# Predict RC values
+prediction2 = predict(improvedModel, test)
+testWithP = cbind(testWithP, prediction2)
+
+# Plot predictions against the true values
+ggplot(testWithP, aes(x = RC_annual, y = prediction2)) +
+  lims(y = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals2 = testWithP$RC_annual - testWithP$prediction2
+testWithP = cbind(testWithP, residuals2)
+ggplot(testWithP, aes(x = prediction2, y = residuals2)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+
+# Get the average error for the RC predictions
+abs(residuals2) %>%
+  na.omit() %>%
+  sum()/length(residuals2) -> average
+```
+
+The average prediction for the training data has a residual of `r average`.
