@@ -338,3 +338,23 @@ abs(residuals2) %>%
 ```
 
 The average prediction for the training data has a residual of `r average`.
+
+```{r TunedImportance}
+## Makes plots showing which of the predictors matter and how often they're used in the tuned model
+
+varImpPlot(improvedModel)
+print("Absolue value of of Latitude, Leaf_habit, Rs_annual, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate")
+varUsed(improvedModel)
+```
+
+``` {r CorelationValues}
+## See how much of the variation in RC_annual is explained by out prediction value
+
+# For training data
+trainCor = lm(RC_annual ~ prediction2, data = trainWithP)
+summary(trainCor)
+
+#For testing data
+testCor = lm(RC_annual ~ prediction2, data = testWithP)
+summary(testCor)
+```
