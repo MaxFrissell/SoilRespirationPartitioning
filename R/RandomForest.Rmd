@@ -1,7 +1,7 @@
 ---
 title: "Predicting Rs Partitioning Using Random Forest Modeling"
 author: "Max Frissell"
-date: "8/3/2020"
+date: "8/6/2020"
 output: html_document
 ---
 
@@ -180,8 +180,8 @@ prediction = predict(model, train)
 trainWithP = cbind(train, prediction)
 
 # Plot training data RC values and the predicted values from the model
-ggplot(trainWithP, aes(x = RC_annual, y = prediction)) +
-  lims(y = c(0, 1)) +
+ggplot(trainWithP, aes(y = RC_annual, x = prediction)) +
+  lims(x = c(0, 1)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
 
@@ -209,9 +209,10 @@ prediction = predict(model, test)
 testWithP = cbind(test, prediction)
 
 # Plot test data RC values with their predicted values
-ggplot(testWithP, aes(x = RC_annual, y = prediction)) +
-  lims(y = c(0, 1)) +
+ggplot(testWithP, aes(x = prediction, y = RC_annual)) +
+  lims(x = c(0, 1)) +
   geom_point() +
+  geom_smooth(method = lm) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
 
 # Calculate the residuals and make a residuals plot
@@ -287,7 +288,7 @@ prediction2 = predict(improvedModel, train)
 trainWithP = cbind(trainWithP, prediction2)
 
 # Plot predictions vs true values
-ggplot(trainWithP, aes(x = RC_annual, y = prediction2)) +
+ggplot(trainWithP, aes(x = prediction2, y = RC_annual)) +
   lims(y = c(0, 1)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
@@ -316,9 +317,10 @@ prediction2 = predict(improvedModel, test)
 testWithP = cbind(testWithP, prediction2)
 
 # Plot predictions against the true values
-ggplot(testWithP, aes(x = RC_annual, y = prediction2)) +
-  lims(y = c(0, 1)) +
+ggplot(testWithP, aes(x = prediction2, y = RC_annual)) +
+  lims(x = c(0, 1)) +
   geom_point() +
+  geom_smooth(method = lm) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
 
 # Calculate the residuals and make a residuals plot
