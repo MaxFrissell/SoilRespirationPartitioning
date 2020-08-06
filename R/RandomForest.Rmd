@@ -274,7 +274,7 @@ improvedModel = randomForest(RC_annual ~
                        IGBP_group + Ecosystem2 + MiddleClimate,
                      data = train,
                      ntree = 200,
-                     mtry = 40,
+                     mtry = 5,
                      importance = TRUE, 
                      proximity = TRUE,
                      na.action = na.exclude)
