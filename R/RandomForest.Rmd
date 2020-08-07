@@ -139,7 +139,10 @@ allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, Cl
 ``` {r RandomForest}
 ## Use random forest machine learning to create a model to predict Rs partitioning
 
-# Add the absolue value of latitude to the dataset
+# Set seed to a specific value, for reproducability
+set.seed(191982)
+
+# Add the absolute value of latitude to the dataset
 absLat = abs(allData$Latitude)
 allData = cbind(allData, absLat)
 
