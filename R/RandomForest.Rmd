@@ -28,8 +28,8 @@ library(e1071)
 
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
-  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, Rs_annual, Rh_annual, RC_annual, Manipulation) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
+  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, Rs_annual, RC_annual, Manipulation) %>%
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
 ```
 
 ```{r PullingFromWC2}
