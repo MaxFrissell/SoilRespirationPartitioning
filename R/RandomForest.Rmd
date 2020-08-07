@@ -136,6 +136,10 @@ left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2
 allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
 ```
 
+### Predicting RC Using a Default Random Forest Model
+
+First, I will use the default settings in the randomForest package to make a random forest model to predict the root contribution to Rs (RC). 
+
 ``` {r RandomForest}
 ## Use random forest machine learning to create a model to predict Rs partitioning
 
@@ -146,19 +150,19 @@ set.seed(191982)
 absLat = abs(allData$Latitude)
 allData = cbind(allData, absLat)
 
+# Make sure there is no missing data
+allData = allData[!is.na(allData$RC_annual) & !is.na(allData$absLat) &
+!is.na(allData$Leaf_habit) & !is.na(allData$Rs_annual) &
+!is.na(allData$MAT) & !is.na(allData$MAP) &
+!is.na(allData$AM_percent) & !is.na(allData$EM_percent) & !is.na(allData$ER_percent) & !is.na(allData$NM_percent) &
+!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground) &
+!is.na(allData$N_dep_1993) &
+!is.na(allData$IGBP_group) & !is.na(allData$Ecosystem2) & !is.na(allData$MiddleClimate),]
+
 # Split data into a set to train the model and a set to test approx. 70/30 split
 samp = sample(2, nrow(allData), replace = TRUE, prob = c(.7, .3))
 train = allData[samp == 1,]
 test = allData[samp == 2,]
-
-# This fixes a problem, don't ask me why, I have no idea
-train = train[!is.na(train$RC_annual) & !is.na(train$absLat) &
-!is.na(train$Leaf_habit) & !is.na(train$Rs_annual) &
-!is.na(train$MAT) & !is.na(train$MAP) &
-!is.na(train$AM_percent) & !is.na(train$EM_percent) & !is.na(train$ER_percent) & !is.na(train$NM_percent) &
-!is.na(train$BM_aboveground) & !is.na(train$BM_belowground) &
-!is.na(train$N_dep_1993) &
-!is.na(train$IGBP_group) & !is.na(train$Ecosystem2) & !is.na(train$MiddleClimate),]
 
 # Make a random forest model
 model = randomForest(RC_annual ~
@@ -174,6 +178,8 @@ model = randomForest(RC_annual ~
                      proximity = TRUE,
                      na.action = na.exclude)
 ```
+
+This compares the predictions the model made for the data it was trained with to the actually RC values.
 
 ``` {r InvestigateModelWithTrain}
 ## Investigate how well the model works at predicting training data RC
@@ -203,6 +209,8 @@ abs(residuals) %>%
 ```
 
 The average prediction for the training data has a residual of `r average`.
+
+This compares the predictions for data the model wasn't trained with with the actual RC values.
 
 ``` {r InvestigateModelWithTest}
 ## Investigate how well the model works at predicting test data RC
@@ -234,13 +242,11 @@ abs(residuals) %>%
 
 The average prediction for the testing data has a residual of `r average`
 
-``` {r WhichParametersMatter}
-## Makes plots showing which of the predictors matter and how often they're used
+### Improving the model
 
-varImpPlot(model)
-print("Absolue value of of Latitude, Leaf_habit, Rs_annual, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate")
-varUsed(model)
-```
+Here is a graph of the error vs the number of trees in the model and a graph of how the error varies with different values of mtry.
+mtry is a parameter for this random forest function that sets how many variables are tried when making each node of a regression tree.
+The number of trees and this mtry value are both input parameters used to produce the random forest model.
 
 ``` {r ModelTuning}
 ## This Will investigate certain facets of the model and tweak how it was made to hopefully make more accurate predictions
@@ -249,8 +255,8 @@ varUsed(model)
 plot(model)
 
 # Tune with different mtry values
-tuneRF(subset(train, select = -c(RC_annual, Site_ID, Longitude, Latitude, Rh_annual, Manipulation)), 
-       train[, 7],
+tuneRF(subset(train, select = -c(RC_annual, Site_ID, Longitude, Latitude, Manipulation)), 
+       train[, 6],
        stepFactor = 2,
        plot = TRUE,
        ntreetry = 200, # Based on the plot above, 200 trees seems reasonable
@@ -258,16 +264,17 @@ tuneRF(subset(train, select = -c(RC_annual, Site_ID, Longitude, Latitude, Rh_ann
        improve = .01)
 ```
 
-200 trees and an mtry of 3 seem the best the most often in this test.
-Sometimes an mtry of 5 looks better, but when it does 3 is usually close behind.
+An mtry of 10 seem the best the most often in this test.
+100 trees would probably be enough, but I will use 200 to be safe.
 
-But, through messing with the mtry values when actually making another RF model, mtry values from 20-75 seem to be the best, lowering error by 5-10% on average.
-Despite this, I can never get this tuning function to show me that they work better, but they really seem to.
+To make my predictions more consistent, I will make 20 separate models, using these values for the number of trees and mtry, and average the outputs.
 
-``` {r RemakeModel}
-## Make another RF model with the same data, using the values of mtry and # of trees that seem like they work the best
+``` {r RemakeModelAndPredict}
+## Make 20 RF models with the better settings and average their predictions
 
-improvedModel = randomForest(RC_annual ~
+# Make 20 RF models
+for(i in 1:20) {
+  model = randomForest(RC_annual ~
                        absLat +
                        Leaf_habit + Rs_annual +
                        MAT + MAP +
@@ -277,59 +284,82 @@ improvedModel = randomForest(RC_annual ~
                        IGBP_group + Ecosystem2 + MiddleClimate,
                      data = train,
                      ntree = 200,
-                     mtry = 5,
+                     mtry = 10,
                      importance = TRUE, 
                      proximity = TRUE,
                      na.action = na.exclude)
+  
+  # Predict values for the training and testing data using each model
+  prediction = predict(model, train)
+  prediction2 = predict(model, test)
+  
+  # Add predictions to a dataframe
+  if(i == 1) {
+    allPredict = prediction
+    allPredict2 = prediction2
+  } else {
+    allPredict = cbind(allPredict, prediction)
+    allPredict2 = cbind(allPredict2, prediction2)
+  }
+}
+
+# Calculate the sum of all the predictions for each point
+for(i in 1:nrow(allPredict)) {
+  sum = 0
+  
+  for(j in 1:ncol(allPredict)) {
+    sum = sum + allPredict[i, j]
+  }
+  
+  # Average all the predictions
+  trainAvg = sum/ncol(allPredict)
+  
+  # Put all the averages in a vector
+  if(i == 1) {
+    trainPs = c(trainAvg)
+  } else {
+    trainPs = append(trainPs, trainAvg)
+  }
+}
+
+# Do the same for test data predictions
+for(i in 1:nrow(allPredict2)) {
+  sum = 0
+  
+  for(j in 1:ncol(allPredict2)) {
+    sum = sum + allPredict2[i, j]
+  }
+  
+  testAvg = sum/ncol(allPredict2)
+  
+  if(i == 1) {
+    testPs = c(testAvg)
+  } else {
+    testPs = append(testPs, testAvg)
+  }
+}
 ```
+
+Here are how the averaged model predictions compared to the true RC values in the data used to train the models.
 
 ``` {r PredictTrain}
-## Use the model to predict RC values in the training data
+## Investigate predictions for training data
 
-# Predict values
-prediction2 = predict(improvedModel, train)
-trainWithP = cbind(trainWithP, prediction2)
+# Put everything into one dataframe
+predict2 = trainPs
+trainWithP = cbind(trainWithP, predict2)
 
 # Plot predictions vs true values
-ggplot(trainWithP, aes(x = prediction2, y = RC_annual)) +
-  lims(y = c(0, 1)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
-
-# Calculate the residuals and make a residuals plot
-residuals2 = trainWithP$RC_annual - trainWithP$prediction2
-trainWithP = cbind(trainWithP, residuals2)
-ggplot(trainWithP, aes(x = prediction2, y = residuals2)) +
-  lims(x = c(0, 1)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
-
-# Get the average error for the RC predictions
-abs(residuals2) %>%
-  na.omit() %>%
-  sum()/length(residuals2) -> average
-```
-
-The average prediction for the training data has a residual of `r average`.
-
-``` {r PredictTest}
-## Use the model to predict RC values in the testing data
-
-# Predict RC values
-prediction2 = predict(improvedModel, test)
-testWithP = cbind(testWithP, prediction2)
-
-# Plot predictions against the true values
-ggplot(testWithP, aes(x = prediction2, y = RC_annual)) +
+ggplot(trainWithP, aes(x = predict2, y = RC_annual)) +
   lims(x = c(0, 1)) +
   geom_point() +
   geom_smooth(method = lm) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
 
 # Calculate the residuals and make a residuals plot
-residuals2 = testWithP$RC_annual - testWithP$prediction2
-testWithP = cbind(testWithP, residuals2)
-ggplot(testWithP, aes(x = prediction2, y = residuals2)) +
+residuals2 = trainWithP$RC_annual - trainWithP$predict2
+trainWithP = cbind(trainWithP, residuals2)
+ggplot(trainWithP, aes(x = predict2, y = residuals2)) +
   lims(x = c(0, 1)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
@@ -342,22 +372,57 @@ abs(residuals2) %>%
 
 The average prediction for the training data has a residual of `r average`.
 
-```{r TunedImportance}
-## Makes plots showing which of the predictors matter and how often they're used in the tuned model
+Here are how the averaged model predictions compared to the true RC values in the data not used to train the models.
 
-varImpPlot(improvedModel)
-print("Absolue value of of Latitude, Leaf_habit, Rs_annual, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate")
-varUsed(improvedModel)
+``` {r PredictTest}
+## Investigate predictions for test data
+
+# put everything into one dataframe
+predict2 = testPs
+testWithP = cbind(testWithP, predict2)
+
+# Plot predictions against the true values
+ggplot(testWithP, aes(x = predict2, y = RC_annual)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals2 = testWithP$RC_annual - testWithP$predict2
+testWithP = cbind(testWithP, residuals2)
+ggplot(testWithP, aes(x = predict2, y = residuals2)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+
+# Get the average error for the RC predictions
+abs(residuals2) %>%
+  na.omit() %>%
+  sum()/length(residuals2) -> average
 ```
+
+The average prediction for the training data has a residual of `r average`.
+
+These are some values for linear models for RC based on the predicted values.
+The first is for the training data, the second for the data set aside at the start.
 
 ``` {r CorelationValues}
 ## See how much of the variation in RC_annual is explained by out prediction value
 
 # For training data
-trainCor = lm(RC_annual ~ prediction2, data = trainWithP)
+trainCor = lm(RC_annual ~ predict2, data = trainWithP)
 summary(trainCor)
 
 #For testing data
-testCor = lm(RC_annual ~ prediction2, data = testWithP)
+testCor = lm(RC_annual ~ predict2, data = testWithP)
 summary(testCor)
+```
+
+```{r TunedImportance, eval = FALSE}
+## Makes plots showing which of the predictors matter and how often they're used in the tuned model
+
+varImpPlot(improvedModel)
+print("Absolue value of of Latitude, Leaf_habit, Rs_annual, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate")
+varUsed(improvedModel)
 ```
