@@ -418,11 +418,3 @@ summary(trainCor)
 testCor = lm(RC_annual ~ predict2, data = testWithP)
 summary(testCor)
 ```
-
-```{r TunedImportance, eval = FALSE}
-## Makes plots showing which of the predictors matter and how often they're used in the tuned model
-
-varImpPlot(improvedModel)
-print("Absolue value of of Latitude, Leaf_habit, Rs_annual, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate")
-varUsed(improvedModel)
-```
