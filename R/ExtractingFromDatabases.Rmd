@@ -440,6 +440,5 @@ mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitu
 
 # Add data to the large dataset
 left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
-
-summary(allData)
+allData = subset(allData, select = -c(Latitude2, Longitude2))
 ```
