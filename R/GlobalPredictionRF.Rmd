@@ -1,0 +1,6 @@
+---
+title: "Predicting Global Rs Partitioning Using Random Forest Modeling"
+author: "Max Frissell"
+date: "8/10/20"
+output: html_document
+---
