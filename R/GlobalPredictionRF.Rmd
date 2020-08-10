@@ -134,3 +134,126 @@ left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2
 # Remove data I don't want anymore and NAs
 allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
 ```
+
+``` {r RandomForest}
+## Make a random forest model to precict RC_annual from all of the data
+
+# set seed for reproducability
+set.seed(698541985)
+
+# Add the absolute value of latitude to the dataset
+absLat = abs(allData$Latitude)
+allData = cbind(allData, absLat)
+
+# Make sure there is no missing data
+allData = allData[!is.na(allData$RC_annual) & !is.na(allData$absLat) &
+!is.na(allData$Leaf_habit) & !is.na(allData$Rs_annual) &
+!is.na(allData$MAT) & !is.na(allData$MAP) &
+!is.na(allData$AM_percent) & !is.na(allData$EM_percent) & !is.na(allData$ER_percent) & !is.na(allData$NM_percent) &
+!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground) &
+!is.na(allData$N_dep_1993) &
+!is.na(allData$IGBP_group) & !is.na(allData$Ecosystem2) & !is.na(allData$MiddleClimate),]
+
+# Make a random forest model
+model = randomForest(RC_annual ~
+                       absLat +
+                       Leaf_habit + Rs_annual +
+                       MAT + MAP +
+                       AM_percent + EM_percent + ER_percent + NM_percent +
+                       BM_aboveground + BM_belowground +
+                       N_dep_1993 +
+                       IGBP_group + Ecosystem2 + MiddleClimate,
+                     data = allData,
+                     importance = TRUE, 
+                     proximity = TRUE,
+                     na.action = na.exclude)
+```
+
+```{r InvestigateModel}
+## Investigate how well the first model works
+
+# Predict allData RC's using the model
+prediction = predict(model, allData)
+withP = cbind(allData, prediction)
+
+# Plot these predictions vs the true values
+ggplot(withP, aes(x = prediction, y = RC_annual)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals = withP$RC_annual - withP$prediction
+withP = cbind(withP, residuals)
+ggplot(withP, aes(x = prediction, y = residuals)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+```
+
+``` {r ModelTuning}
+## This Will investigate certain facets of the model and tweak how it was made to hopefully make more accurate predictions
+
+# Plot how much adding more trees affected the accuracy
+plot(model)
+
+# Tune with different mtry values
+tuneRF(subset(allData, select = -c(RC_annual, Site_ID, Longitude, Latitude, Manipulation)), 
+       allData[, 6],
+       stepFactor = 2,
+       plot = TRUE,
+       ntreetry = 200, # Based on the plot above, 200 trees seems reasonable
+       trace = TRUE,
+       improve = .01)
+```
+
+``` {r ImproveModel}
+## replace the old model with a new one, created using the settings that the tuning graphs show are the best
+
+model = randomForest(RC_annual ~
+                       absLat +
+                       Leaf_habit + Rs_annual +
+                       MAT + MAP +
+                       AM_percent + EM_percent + ER_percent + NM_percent +
+                       BM_aboveground + BM_belowground +
+                       N_dep_1993 +
+                       IGBP_group + Ecosystem2 + MiddleClimate,
+                     data = allData,
+                     mtry = 3, # 3 has the least error in the tuning graph
+                     ntree = 200, # After ~200 trees, adding more trees doesn't seem to make a difference
+                     importance = TRUE, 
+                     proximity = TRUE,
+                     na.action = na.exclude)
+```
+
+``` {r InvestigateImproved}
+## Investigate how well the improved model works
+
+# Predict allData RC's using the model
+prediction = predict(model, allData)
+withP = cbind(allData, prediction)
+
+# Plot these predictions vs the true values
+ggplot(withP, aes(x = prediction, y = RC_annual)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+
+# Calculate the residuals and make a residuals plot
+residuals = withP$RC_annual - withP$prediction
+withP = cbind(withP, residuals)
+ggplot(withP, aes(x = prediction, y = residuals)) +
+  lims(x = c(0, 1)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
+
+# Look at how well the model predicts RC using a linear regression model on the RF model output
+lm = lm(RC_annual ~ prediction, data = withP)
+summary(lm)
+```
+
+Note: this is not representative of how good this model is a predicting RC values that it has never seen before; 
+this only speaks to its ability to predict RC values that it was trained with and trained to be able to predict to the best of its ability.
+As seen with other models produced using only some of this data, this model would perform signifigantly worse when given data it wasn't trained with.
