@@ -4,3 +4,133 @@ author: "Max Frissell"
 date: "8/10/20"
 output: html_document
 ---
+
+```{r Packages, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(ggplot2)
+theme_set(theme_minimal())
+library(here)
+library(hexbin)
+library(plyr)
+library(raster)
+library(randomForest)
+library(caret)
+library(e1071)
+```
+
+```{r SRDBSetup, include = FALSE}
+## Selects the lines I want to use from the SRDB
+
+# Read in entire SRDB and pull only desired columns, removing rows with missing values
+read.csv(here::here("Data", "srdb-data.csv")) %>%
+  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, Rs_annual, RC_annual, Manipulation) %>%
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
+```
+
+```{r PullingFromWC2}
+## This chunk pulls climate data from WorldClim2 and makes some graphs from the mean annual temperature and precipitation data
+
+# Download worldclim data for precip and tmean if necessary, into w10/ folder
+precip <- getData("worldclim", path = here::here(), var = "prec", res = 10, download = !file.exists("wc10/prec1.hdr"))
+tmean <- getData("worldclim", path = here::here(), var = "tmean", res = 10, download = !file.exists("wc10/wc10/tmean1.hdr"))
+
+# Pull out cosore dataset latitudes and longitudes
+srdb %>%
+  dplyr::select(Site_ID, Longitude, Latitude) -> srdb_coords
+
+# MAP data that matches the srdb coordinates
+raster::extract(precip, srdb_coords[2:3]) -> precip_coords
+apply(precip_coords, 1, sum) -> MAP
+
+# The same for MAT
+raster::extract(tmean, srdb_coords[2:3]) -> tmean_vals
+apply(tmean_vals, 1, mean) -> MAT
+
+# Temp data is stored in degC * 10, so we need to divide to get back to degC
+MAT <- MAT/10
+
+# Add the worldclim MAT and MAP values to the srdb data and remove missing values
+allData = cbind(srdb, MAT, MAP)
+allData = allData[!is.na(MAT),]
+```
+
+``` {r ExtractingMyco}
+## Extracts data on mycorrhizae for each SRDB point from global dataset from Soudzilovskaia et al. 2019
+## Note: the .TIF files used here::here are not included in the repo and were downloaded from https://github.com/nasoudzilovskaia/Soudzilovskaia_NatureComm_MycoMaps/tree/master/Maps_Myco_veg_current on 7/14/20
+
+# Get all of the global data for each type of myco (again, files are pre-downloaded and not in the GitHub repo)
+am = raster(here::here("Data", "MycDistrAM_current.TIF"))
+em = raster(here::here("Data", "MycDistrEM_current.TIF"))
+er = raster(here::here("Data", "MycDistrER_current.TIF"))
+nm = raster(here::here("Data", "MycDistrNM_current.TIF"))
+
+# Extract the myco data for each coordinate pair in the SRDB database and add it to the rest of the data
+AM_percent = raster::extract(am, allData[, c(3, 2)])
+EM_percent = raster::extract(em, allData[, c(3, 2)])
+ER_percent = raster::extract(er, allData[, c(3, 2)])
+NM_percent = raster::extract(nm, allData[, c(3, 2)])
+allData = cbind(allData, AM_percent, EM_percent, ER_percent, NM_percent)
+
+# Throw out the entries where::here there::here isn't myco data
+allData = allData[!is.na(allData$AM_percent),]
+```
+
+``` {r ExtractingBiomass}
+## Extracts data on above and below ground biomass for each SRDB point from global dataset from Spawn et al. 2020
+## Note: the .TIF files used are not included in the repo and were downloaded from https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1763 on 7/15/20
+
+raster(here::here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
+  raster::extract(allData[, c(3, 2)]) -> BM_aboveground
+
+raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
+  raster::extract(allData[, c(3, 2)]) -> BM_belowground
+
+# Add these biomass values to the larger dataset
+allData = cbind(allData, BM_aboveground, BM_belowground)
+
+# Remove values where::here there::here are no biomass data
+allData = allData[!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground),]
+```
+
+``` {r ExtractingNDep}
+## Extracts N deposition data for each srdb point
+
+# Pull N-dep values for every coordinate pair in the SRDB
+raster(here::here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
+  raster::extract(allData[, c(3, 2)]) -> N_dep_1993
+
+# Add this to the data pool and remove entries without N-dep data
+allData <- cbind(allData, N_dep_1993)[!is.na(N_dep_1993),]
+```
+
+``` {r ExtractingIGBP}
+## Extracts climate and vegetation data from IGBP Koppen MODIS
+
+IGBP_Koppen_MODIS <- read.csv(here::here("Data", "IGBP_Koppen_MODIS.csv"))
+
+# Regroup climate data into fewer categories for easier analysis
+IGBP_Koppen_MODIS %>% 
+  mutate(MiddleClimate = case_when(
+    ClimateTypes %in% c("Af", "Am", "As", "Aw") ~ "A",
+    ClimateTypes %in% c("BSh", "BSk", "BWh", "BWk") ~ "B",
+    ClimateTypes %in% c("Cfa", "Cfb", "Cfc") ~ "Cf",
+    ClimateTypes %in% c("Csa", "Csb", "Csc") ~ "Cs",
+    ClimateTypes %in% c("Cwa", "Cwb", "Cwc") ~ "Cw",
+    ClimateTypes %in% c("Dfa", "Dfb", "Dfc", "Dfd") ~ "Df",
+    ClimateTypes %in% c("Dsa", "Dsb", "Dsc", "Dwa", "Dwb", "Dwc", "Dwd") ~ "Dsw",
+    ClimateTypes %in% c("EF", "ET") ~ "E",
+    TRUE ~ "Other")) -> IGBP_Koppen_MODIS
+
+# Change Latitude and Longitude to the same 0.5*0.5 resolution as in the dataset
+mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitude*2)/2+0.25) -> allData
+
+# Add data to the large dataset
+left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
+
+# Remove data I don't want anymore and NAs
+allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
+```
