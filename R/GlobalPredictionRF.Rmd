@@ -133,6 +133,9 @@ left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2
 
 # Remove data I don't want anymore and NAs
 allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
+
+# Rename warner_rs variable to Rs_warner to fit with the other variables
+allData = dplyr::rename(allData, Rs_warner = warner_rs)
 ```
 
 ``` {r RandomForest}
@@ -147,7 +150,7 @@ allData = cbind(allData, absLat)
 
 # Make sure there is no missing data
 allData = allData[!is.na(allData$RC_annual) & !is.na(allData$absLat) &
-!is.na(allData$Leaf_habit) & !is.na(allData$Rs_annual) &
+!is.na(allData$Leaf_habit) & !is.na(allData$Rs_warner) &
 !is.na(allData$MAT) & !is.na(allData$MAP) &
 !is.na(allData$AM_percent) & !is.na(allData$EM_percent) & !is.na(allData$ER_percent) & !is.na(allData$NM_percent) &
 !is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground) &
@@ -157,7 +160,7 @@ allData = allData[!is.na(allData$RC_annual) & !is.na(allData$absLat) &
 # Make a random forest model
 model = randomForest(RC_annual ~
                        absLat +
-                       Leaf_habit + Rs_annual +
+                       Rs_warner +
                        MAT + MAP +
                        AM_percent + EM_percent + ER_percent + NM_percent +
                        BM_aboveground + BM_belowground +
@@ -213,7 +216,7 @@ tuneRF(subset(allData, select = -c(RC_annual, Site_ID, Longitude, Latitude, Mani
 
 model = randomForest(RC_annual ~
                        absLat +
-                       Leaf_habit + Rs_annual +
+                       Rs_warner +
                        MAT + MAP +
                        AM_percent + EM_percent + ER_percent + NM_percent +
                        BM_aboveground + BM_belowground +
