@@ -31,7 +31,7 @@ read.csv(here::here("Data", "srdb-data.csv")) %>%
   subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
 ```
 
-```{r PullingFromWC2}
+```{r PullingFromWC2, cashe = TRUE}
 ## This chunk pulls climate data from WorldClim2 and makes some graphs from the mean annual temperature and precipitation data
 
 # Download worldclim data for precip and tmean if necessary, into w10/ folder
