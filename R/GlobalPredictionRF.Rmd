@@ -257,6 +257,14 @@ lm = lm(RC_annual ~ prediction, data = withP)
 summary(lm)
 ```
 
+``` {r Importance}
+## Look at which predictors are the most important
+
+varImpPlot(model)
+"absLat, Rs_warner, MAT, MAP, AM_percent, EM_percent, ER_percent, NM_percent, BM_aboveground, BM_belowground, N_dep_1993, IGBP_group, Ecosystem2, MiddleClimate"
+varUsed(model)
+```
+
 Note: this is not representative of how good this model is a predicting RC values that it has never seen before; 
 this only speaks to its ability to predict RC values that it was trained with and trained to be able to predict to the best of its ability.
 As seen with other models produced using only some of this data, this model would perform signifigantly worse when given data it wasn't trained with.
