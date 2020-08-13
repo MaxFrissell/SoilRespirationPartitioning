@@ -268,3 +268,44 @@ varUsed(model)
 Note: this is not representative of how good this model is a predicting RC values that it has never seen before; 
 this only speaks to its ability to predict RC values that it was trained with and trained to be able to predict to the best of its ability.
 As seen with other models produced using only some of this data, this model would perform signifigantly worse when given data it wasn't trained with.
+
+``` {r PullingGlobalLatLong}
+## Pull a global set of coordinates for all land and ecosystem data for those coords
+
+# Read it all in from csv
+globalData <- read.csv(here::here("Data", "IGBP_Koppen_MODIS.csv"))
+
+# Regroup climate data into fewer categories for easier analysis
+globalData %>% 
+  mutate(MiddleClimate = case_when(
+    ClimateTypes %in% c("Af", "Am", "As", "Aw") ~ "A",
+    ClimateTypes %in% c("BSh", "BSk", "BWh", "BWk") ~ "B",
+    ClimateTypes %in% c("Cfa", "Cfb", "Cfc") ~ "Cf",
+    ClimateTypes %in% c("Csa", "Csb", "Csc") ~ "Cs",
+    ClimateTypes %in% c("Cwa", "Cwb", "Cwc") ~ "Cw",
+    ClimateTypes %in% c("Dfa", "Dfb", "Dfc", "Dfd") ~ "Df",
+    ClimateTypes %in% c("Dsa", "Dsb", "Dsc", "Dwa", "Dwb", "Dwc", "Dwd") ~ "Dsw",
+    ClimateTypes %in% c("EF", "ET") ~ "E",
+    TRUE ~ "Other")) -> globalData
+
+# Get rid of redundant/unhelpful data
+globalData = subset(globalData, select = -c(IGBP, Ecosystem, ClimateTypes, barren_yn))
+```
+
+``` {r GlobalPullFromWC2}
+## Pull climate data from WorldClim2 for global coords
+
+# Extract precip values
+raster::extract(precip, globalData[c(2, 1)]) %>%
+apply(1, sum) -> MAP
+
+# Extract temp values
+raster::extract(tmean, globalData[c(2, 1)]) %>%
+apply(1, mean) -> MAT
+
+# Temp data is stored in degC * 10, so we need to divide to get back to degC
+MAT <- MAT/10
+
+# Add it to the dataframe
+globalData = cbind(globalData, MAP, MAT)
+```
