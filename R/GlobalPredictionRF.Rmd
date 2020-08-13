@@ -27,8 +27,8 @@ library(e1071)
 
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
-  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, Rs_annual, RC_annual, Manipulation) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
+  dplyr::select(Site_ID, Latitude, Longitude, Rs_annual, RC_annual, Manipulation) %>%
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
 ```
 
 ```{r PullingFromWC2, cashe = TRUE}
@@ -150,7 +150,7 @@ allData = cbind(allData, absLat)
 
 # Make sure there is no missing data
 allData = allData[!is.na(allData$RC_annual) & !is.na(allData$absLat) &
-!is.na(allData$Leaf_habit) & !is.na(allData$Rs_warner) &
+!is.na(allData$Rs_warner) &
 !is.na(allData$MAT) & !is.na(allData$MAP) &
 !is.na(allData$AM_percent) & !is.na(allData$EM_percent) & !is.na(allData$ER_percent) & !is.na(allData$NM_percent) &
 !is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground) &
@@ -203,7 +203,7 @@ plot(model)
 
 # Tune with different mtry values
 tuneRF(subset(allData, select = -c(RC_annual, Site_ID, Longitude, Latitude, Manipulation)), 
-       allData[, 6],
+       allData[, 5],
        stepFactor = 2,
        plot = TRUE,
        ntreetry = 200, # Based on the plot above, 200 trees seems reasonable
