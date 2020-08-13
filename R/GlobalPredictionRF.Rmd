@@ -1,7 +1,7 @@
 ---
 title: "Predicting Global Rs Partitioning Using Random Forest Modeling"
 author: "Max Frissell"
-date: "8/10/20"
+date: "8/13/20"
 output: html_document
 ---
 
@@ -27,8 +27,11 @@ library(e1071)
 
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
-  dplyr::select(Site_ID, Latitude, Longitude, Rs_annual, RC_annual, Manipulation) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None") -> srdb
+  dplyr::select(Site_ID, Latitude, Longitude, Rs_annual, RC_annual, Manipulation, warner_rs) %>%
+  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None" & !is.na(warner_rs)) -> srdb
+
+# Rename warner_rs variable to Rs_warner to fit with the other variables' names
+srdb = dplyr::rename(srdb, Rs_warner = warner_rs)
 ```
 
 ```{r PullingFromWC2, cashe = TRUE}
@@ -83,9 +86,9 @@ allData = allData[!is.na(allData$AM_percent),]
 ## Extracts data on above and below ground biomass for each SRDB point from global dataset from Spawn et al. 2020
 ## Note: the .TIF files used are not included in the repo and were downloaded from https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1763 on 7/15/20
 
+# Extract above and belowground data for each location
 raster(here::here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_aboveground
-
 raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_belowground
 
@@ -132,10 +135,7 @@ mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitu
 left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
 
 # Remove data I don't want anymore and NAs
-allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
-
-# Rename warner_rs variable to Rs_warner to fit with the other variables
-allData = dplyr::rename(allData, Rs_warner = warner_rs)
+allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn, warner_rs))
 ```
 
 ``` {r RandomForest}
@@ -223,7 +223,7 @@ model = randomForest(RC_annual ~
                        N_dep_1993 +
                        IGBP_group + Ecosystem2 + MiddleClimate,
                      data = allData,
-                     mtry = 3, # 3 has the least error in the tuning graph
+                     mtry = 2, # 2 has the least error in the tuning graph
                      ntree = 200, # After ~200 trees, adding more trees doesn't seem to make a difference
                      importance = TRUE, 
                      proximity = TRUE,
@@ -290,6 +290,9 @@ globalData %>%
 
 # Get rid of redundant/unhelpful data
 globalData = subset(globalData, select = -c(IGBP, Ecosystem, ClimateTypes, barren_yn))
+
+# Rename warner_rs variable to Rs_warner to fit with the other variables
+globalData = dplyr::rename(globalData, Rs_warner = warner_rs)
 ```
 
 ``` {r GlobalPullFromWC2}
@@ -308,4 +311,41 @@ MAT <- MAT/10
 
 # Add it to the dataframe
 globalData = cbind(globalData, MAP, MAT)
+```
+
+``` {r GlobalPullFromMyco}
+## Pull mycorrhizae data for global coords
+
+# Extract the myco data for each coordinate pair add it to the rest of the data
+AM_percent = raster::extract(am, globalData[, c(2, 1)])
+EM_percent = raster::extract(em, globalData[, c(2, 1)])
+ER_percent = raster::extract(er, globalData[, c(2, 1)])
+NM_percent = raster::extract(nm, globalData[, c(2, 1)])
+globalData = cbind(globalData, AM_percent, EM_percent, ER_percent, NM_percent)
+```
+
+``` {r GlobalPullFromBiomass}
+## Pull biomass data for global coords
+
+# Extract above and belowground data for each location
+raster(here::here("Data", "aboveground_biomass_carbon_2010.tif")) %>%
+  raster::extract(globalData[, c(2, 1)]) -> BM_aboveground
+raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
+  raster::extract(globalData[, c(2, 1)]) -> BM_belowground
+
+# Add biomass to the dataframe
+globalData = cbind(globalData, BM_aboveground, BM_belowground)
+```
+
+``` {r GlobalPullFromNDep}
+## Pull N deposition data for global coords
+
+# Pull N-dep values for every coordinate pair
+raster(here::here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
+  raster::extract(globalData[, c(2, 1)]) -> N_dep_1993
+
+# Add it to the dataframe
+globalData = cbind(globalData, N_dep_1993)
+
+summary(globalData)
 ```
