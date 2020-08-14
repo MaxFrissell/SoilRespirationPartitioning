@@ -346,6 +346,37 @@ raster(here::here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
 
 # Add it to the dataframe
 globalData = cbind(globalData, N_dep_1993)
+```
+
+``` {r MappingAndRemoving}
+## Map all coordinate points and see how they change as NA data is removed
+
+# Plot starting global grid of coords
+ggplot(globalData, aes(x = Longitude, y = Latitude)) +
+  geom_point(size = .3) +
+  lims(x = c(-180, 180), y = c(-90, 90))
+
+# Get rid of points with missing warner Rs, myco, and climate data
+globalData = globalData[complete.cases(globalData),]
+
+# Plot again
+ggplot(globalData, aes(x = Longitude, y = Latitude)) +
+  geom_point(size = .3,) +
+  lims(x = c(-180, 180), y = c(-90, 90))
 
 summary(globalData)
+```
+
+``` {r GlobalPrediction}
+## Predict global RC
+
+# Predict it
+prediction = predict(model, globalData)
+globalWithP = cbind(globalData, prediction)
+
+summary(globalWithP)
+
+# Look at the distribution of predictions
+ggplot(globalWithP, aes(x = prediction)) +
+  geom_histogram()
 ```
