@@ -29,8 +29,11 @@ library(raster)
 
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
-  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, MAT, MAP, Rs_annual, Rh_annual, RC_annual, Manipulation) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Leaf_habit) & !is.na(Rs_annual) & !is.na(Rh_annual) & RC_annual >= 0 & RC_annual <= 1 & Manipulation == "None") -> srdb
+  dplyr::select(Site_ID, Latitude, Longitude, Leaf_habit, MAT, MAP, 
+                Rs_annual, Rh_annual, RC_annual, Manipulation) %>%
+  filter(!is.na(Site_ID), !is.na(Latitude), !is.na(Longitude), 
+         !is.na(Leaf_habit), !is.na(Rs_annual), !is.na(Rh_annual), 
+         RC_annual >= 0, RC_annual <= 1, Manipulation == "None") -> srdb
 ```
 
 ## Investigating Data included in the SRDB
@@ -113,7 +116,7 @@ left_join(map, mat, by = c("x", "y")) %>%
 # Just the global distribution of MAT and MAP
 p <- ggplot() +
   geom_hex(data = map_mat_global,
-             aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
+           aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
   scale_fill_viridis_c(name = "Grid cells", begin = 0.85, end = 0) +
   theme_minimal() +
   labs(x = "MAT (°C)", y = "MAP (mm)")
@@ -121,7 +124,7 @@ p <- ggplot() +
 # With points from the SRDB sites
 withPoints <- ggplot() +
   geom_hex(data = map_mat_global,
-             aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
+           aes(x = mat, y = map), bins = 100, na.rm = TRUE) +
   scale_fill_viridis_c(name = "Grid cells", begin = 0.85, end = 0) +
   geom_point(data = srdb_points, aes(x = MAT_WC, y = MAP_WC),
              color = "black", shape = 1, size = 1.5, na.rm = TRUE) +
@@ -133,7 +136,7 @@ print(withPoints)
 
 MAT_WC <- MAT_WC/10
 # Add the worldclim MAT and MAP values to the end of the srdb data
-allData = cbind(srdb, MAT_WC, MAP_WC)
+allData <- cbind(srdb, MAT_WC, MAP_WC)
 ```
 
 ## Comparing the WorldClim Climate Data to the Reported Data in the SRDB
@@ -142,8 +145,6 @@ This is a graph comparing the mean annual temperature (MAT) reported by whoever 
 
 ``` {r ComparingMAT}
 ## Makes a graph comparing the mean annual temperatures in the SRDB and in their corresponding WorldClim2 values
-
-attach(allData)
 
 ggplot(allData, aes(x = MAT_WC, y = MAT)) + 
   geom_point(size = 1.5, color = "chartreuse3") +
@@ -156,8 +157,6 @@ Now the same with mean annual precipitation (MAP).
 
 ``` {r ComparingMAP}
 ## Makes a graph comparing the mean annual precipitations in the SRDB and in their corresponding WorldClim2 values
-
-attach(allData)
 
 ggplot(allData, aes(x = MAP_WC, y = MAP)) + 
   geom_point(size = 1.5, color = "chartreuse3") +
@@ -215,20 +214,20 @@ ggplot(allData, aes(x = MAT_WC, y = MAP_WC, col = Leaf_habit)) +
 ## Note: the .TIF files used here::here are not included in the repo and were downloaded from https://github.com/nasoudzilovskaia/Soudzilovskaia_NatureComm_MycoMaps/tree/master/Maps_Myco_veg_current on 7/14/20
 
 # Get all of the global data for each type of myco (again, files are pre-downloaded and not in the GitHub repo)
-am = raster(here::here("Data", "MycDistrAM_current.TIF"))
-em = raster(here::here("Data", "MycDistrEM_current.TIF"))
-er = raster(here::here("Data", "MycDistrER_current.TIF"))
-nm = raster(here::here("Data", "MycDistrNM_current.TIF"))
+am <- raster(here::here("Data", "MycDistrAM_current.TIF"))
+em <- raster(here::here("Data", "MycDistrEM_current.TIF"))
+er <- raster(here::here("Data", "MycDistrER_current.TIF"))
+nm <- raster(here::here("Data", "MycDistrNM_current.TIF"))
 
 # Extract the myco data for each coordinate pair in the SRDB database and add it to the rest of the data
-AM_percent = raster::extract(am, allData[, c(3, 2)])
-EM_percent = raster::extract(em, allData[, c(3, 2)])
-ER_percent = raster::extract(er, allData[, c(3, 2)])
-NM_percent = raster::extract(nm, allData[, c(3, 2)])
-allData = cbind(allData, AM_percent, EM_percent, ER_percent, NM_percent)
+AM_percent <- raster::extract(am, allData[, c(3, 2)])
+EM_percent <- raster::extract(em, allData[, c(3, 2)])
+ER_percent <- raster::extract(er, allData[, c(3, 2)])
+NM_percent <- raster::extract(nm, allData[, c(3, 2)])
+allData <- cbind(allData, AM_percent, EM_percent, ER_percent, NM_percent)
 
 # Throw out the entries where::here there::here isn't myco data
-allData = allData[!is.na(allData$AM_percent),]
+allData <- allData[!is.na(allData$AM_percent),]
 ```
 
 These are plots of the percentage of plants that use difference kinds of mycorrhizae (the last being none) for each of the SRDB sites.
@@ -327,10 +326,10 @@ raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_belowground
 
 # Add these biomass values to the larger dataset
-allData = cbind(allData, BM_aboveground, BM_belowground)
+allData <- cbind(allData, BM_aboveground, BM_belowground)
 
 # Remove values where::here there::here are no biomass data
-allData = allData[!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground),]
+allData <- allData[!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground),]
 ```
 
 These are maps of the above and below ground biomasses at all of the sites in the SRDB.
@@ -436,9 +435,12 @@ IGBP_Koppen_MODIS %>%
     TRUE ~ "Other")) -> IGBP_Koppen_MODIS
 
 # Change Latitude and Longitude to the same 0.5*0.5 resolution as in the dataset
-mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitude*2)/2+0.25) -> allData
-
-# Add data to the large dataset
-left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
-allData = subset(allData, select = -c(Latitude2, Longitude2))
+allData %>% 
+  mutate(Latitude2 = round(Latitude * 2) / 2 + 0.25, 
+         Longitude2 = round(Longitude * 2) / 2 + 0.25)  %>% 
+  # Add data to the large dataset
+  left_join(IGBP_Koppen_MODIS, by = c("Latitude2" = "Latitude",
+                                      "Longitude2" = "Longitude")) %>% 
+  select(-Latitude2, -Longitude2) ->
+  allData
 ```
