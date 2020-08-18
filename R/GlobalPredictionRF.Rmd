@@ -10,16 +10,12 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 library(dplyr)
 library(tidyr)
-library(magrittr)
 library(ggplot2)
 theme_set(theme_minimal())
 library(here)
-library(hexbin)
-library(plyr)
 library(raster)
 library(randomForest)
 library(caret)
-library(e1071)
 ```
 
 ```{r SRDBSetup, include = FALSE}
@@ -28,10 +24,12 @@ library(e1071)
 # Read in entire SRDB and pull only desired columns, removing rows with missing values
 read.csv(here::here("Data", "srdb-data.csv")) %>%
   dplyr::select(Site_ID, Latitude, Longitude, Rs_annual, RC_annual, Manipulation, warner_rs) %>%
-  subset(!is.na(Site_ID) & !is.na(Latitude) & !is.na(Longitude) & !is.na(Rs_annual) & RC_annual > 0 & RC_annual < 1 & !is.na(RC_annual) & Manipulation == "None" & !is.na(warner_rs)) -> srdb
+  filter(!is.na(Site_ID), !is.na(Latitude), !is.na(Longitude),
+         !is.na(Rs_annual), RC_annual > 0, RC_annual < 1, 
+         !is.na(RC_annual), Manipulation == "None", !is.na(warner_rs)) -> srdb
 
 # Rename warner_rs variable to Rs_warner to fit with the other variables' names
-srdb = dplyr::rename(srdb, Rs_warner = warner_rs)
+srdb <- dplyr::rename(srdb, Rs_warner = warner_rs)
 ```
 
 ```{r PullingFromWC2, cashe = TRUE}
@@ -54,11 +52,11 @@ raster::extract(tmean, srdb_coords[2:3]) -> tmean_vals
 apply(tmean_vals, 1, mean) -> MAT
 
 # Temp data is stored in degC * 10, so we need to divide to get back to degC
-MAT <- MAT/10
+MAT <- MAT / 10
 
 # Add the worldclim MAT and MAP values to the srdb data and remove missing values
-allData = cbind(srdb, MAT, MAP)
-allData = allData[!is.na(MAT),]
+allData <- cbind(srdb, MAT, MAP)
+allData <- allData[!is.na(MAT),]
 ```
 
 ``` {r ExtractingMyco}
@@ -93,10 +91,10 @@ raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
   raster::extract(allData[, c(3, 2)]) -> BM_belowground
 
 # Add these biomass values to the larger dataset
-allData = cbind(allData, BM_aboveground, BM_belowground)
+allData <- cbind(allData, BM_aboveground, BM_belowground)
 
 # Remove values where::here there::here are no biomass data
-allData = allData[!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground),]
+allData <- allData[!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground),]
 ```
 
 ``` {r ExtractingNDep}
@@ -129,36 +127,34 @@ IGBP_Koppen_MODIS %>%
     TRUE ~ "Other")) -> IGBP_Koppen_MODIS
 
 # Change Latitude and Longitude to the same 0.5*0.5 resolution as in the dataset
-mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitude*2)/2+0.25) -> allData
-
-# Add data to the large dataset
-left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
-
-# Remove data I don't want anymore and NAs
-allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn, warner_rs))
+allData %>% 
+  mutate(Latitude2 = round(Latitude * 2) / 2 + 0.25, 
+         Longitude2 = round(Longitude * 2) / 2 + 0.25) %>% 
+  # Add data to the large dataset
+  left_join(IGBP_Koppen_MODIS, by = c("Latitude2" = "Latitude",
+                                      "Longitude2" = "Longitude")) %>% 
+  # Remove data I don't want anymore and NAs
+  dplyr::select(-Latitude2, -Longitude2, -IGBP, -Ecosystem, -ClimateTypes, -barren_yn, -warner_rs) ->
+  allData
 ```
 
 ``` {r RandomForest}
-## Make a random forest model to precict RC_annual from all of the data
+## Make a random forest model to predict RC_annual from all of the data
 
-# set seed for reproducability
+# set seed for reproducibility
 set.seed(698541985)
 
 # Add the absolute value of latitude to the dataset
-absLat = abs(allData$Latitude)
-allData = cbind(allData, absLat)
+allData$absLat <- abs(allData$Latitude)
 
 # Make sure there is no missing data
-allData = allData[!is.na(allData$RC_annual) & !is.na(allData$absLat) &
-!is.na(allData$Rs_warner) &
-!is.na(allData$MAT) & !is.na(allData$MAP) &
-!is.na(allData$AM_percent) & !is.na(allData$EM_percent) & !is.na(allData$ER_percent) & !is.na(allData$NM_percent) &
-!is.na(allData$BM_aboveground) & !is.na(allData$BM_belowground) &
-!is.na(allData$N_dep_1993) &
-!is.na(allData$IGBP_group) & !is.na(allData$Ecosystem2) & !is.na(allData$MiddleClimate),]
+allData <- allData[complete.cases(allData),]
+
+# randomForest requires factor predictors, not characters
+allData$MiddleClimate <- as.factor(allData$MiddleClimate)
 
 # Make a random forest model
-model = randomForest(RC_annual ~
+model <- randomForest(RC_annual ~
                        absLat +
                        Rs_warner +
                        MAT + MAP +
@@ -176,8 +172,8 @@ model = randomForest(RC_annual ~
 ## Investigate how well the first model works
 
 # Predict allData RC's using the model
-prediction = predict(model, allData)
-withP = cbind(allData, prediction)
+prediction <- predict(model, allData)
+withP <- cbind(allData, prediction)
 
 # Plot these predictions vs the true values
 ggplot(withP, aes(x = prediction, y = RC_annual)) +
@@ -187,8 +183,8 @@ ggplot(withP, aes(x = prediction, y = RC_annual)) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
 
 # Calculate the residuals and make a residuals plot
-residuals = withP$RC_annual - withP$prediction
-withP = cbind(withP, residuals)
+residuals <- withP$RC_annual - withP$prediction
+withP <- cbind(withP, residuals)
 ggplot(withP, aes(x = prediction, y = residuals)) +
   lims(x = c(0, 1)) +
   geom_point() +
@@ -208,13 +204,13 @@ tuneRF(subset(allData, select = -c(RC_annual, Site_ID, Longitude, Latitude, Mani
        plot = TRUE,
        ntreetry = 200, # Based on the plot above, 200 trees seems reasonable
        trace = TRUE,
-       improve = .01)
+       improve = 0.01)
 ```
 
 ``` {r ImproveModel}
 ## replace the old model with a new one, created using the settings that the tuning graphs show are the best
 
-model = randomForest(RC_annual ~
+model <- randomForest(RC_annual ~
                        absLat +
                        Rs_warner +
                        MAT + MAP +
@@ -234,8 +230,8 @@ model = randomForest(RC_annual ~
 ## Investigate how well the improved model works
 
 # Predict allData RC's using the model
-prediction = predict(model, allData)
-withP = cbind(allData, prediction)
+prediction <- predict(model, allData)
+withP <- cbind(allData, prediction)
 
 # Plot these predictions vs the true values
 ggplot(withP, aes(x = prediction, y = RC_annual)) +
@@ -245,15 +241,15 @@ ggplot(withP, aes(x = prediction, y = RC_annual)) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
 
 # Calculate the residuals and make a residuals plot
-residuals = withP$RC_annual - withP$prediction
-withP = cbind(withP, residuals)
+residuals <- withP$RC_annual - withP$prediction
+withP <- cbind(withP, residuals)
 ggplot(withP, aes(x = prediction, y = residuals)) +
   lims(x = c(0, 1)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed", size = 1, color = "red")
 
 # Look at how well the model predicts RC using a linear regression model on the RF model output
-lm = lm(RC_annual ~ prediction, data = withP)
+lm <- lm(RC_annual ~ prediction, data = withP)
 summary(lm)
 ```
 
@@ -267,7 +263,7 @@ varUsed(model)
 
 Note: this is not representative of how good this model is a predicting RC values that it has never seen before; 
 this only speaks to its ability to predict RC values that it was trained with and trained to be able to predict to the best of its ability.
-As seen with other models produced using only some of this data, this model would perform signifigantly worse when given data it wasn't trained with.
+As seen with other models produced using only some of this data, this model would perform significantly worse when given data it wasn't trained with.
 
 ``` {r PullingGlobalLatLong}
 ## Pull a global set of coordinates for all land and ecosystem data for those coords
@@ -286,13 +282,12 @@ globalData %>%
     ClimateTypes %in% c("Dfa", "Dfb", "Dfc", "Dfd") ~ "Df",
     ClimateTypes %in% c("Dsa", "Dsb", "Dsc", "Dwa", "Dwb", "Dwc", "Dwd") ~ "Dsw",
     ClimateTypes %in% c("EF", "ET") ~ "E",
-    TRUE ~ "Other")) -> globalData
-
+    TRUE ~ "Other")) %>% 
 # Get rid of redundant/unhelpful data
-globalData = subset(globalData, select = -c(IGBP, Ecosystem, ClimateTypes, barren_yn))
-
+  dplyr::select(-IGBP, -Ecosystem, -ClimateTypes, -barren_yn) %>% 
 # Rename warner_rs variable to Rs_warner to fit with the other variables
-globalData = dplyr::rename(globalData, Rs_warner = warner_rs)
+  rename(Rs_warner = warner_rs) -> 
+  globalData
 ```
 
 ``` {r GlobalPullFromWC2}
@@ -300,28 +295,28 @@ globalData = dplyr::rename(globalData, Rs_warner = warner_rs)
 
 # Extract precip values
 raster::extract(precip, globalData[c(2, 1)]) %>%
-apply(1, sum) -> MAP
+  apply(1, sum) -> MAP
 
 # Extract temp values
 raster::extract(tmean, globalData[c(2, 1)]) %>%
-apply(1, mean) -> MAT
+  apply(1, mean) -> MAT
 
 # Temp data is stored in degC * 10, so we need to divide to get back to degC
-MAT <- MAT/10
+MAT <- MAT / 10
 
 # Add it to the dataframe
-globalData = cbind(globalData, MAP, MAT)
+globalData <- cbind(globalData, MAP, MAT)
 ```
 
 ``` {r GlobalPullFromMyco}
 ## Pull mycorrhizae data for global coords
 
 # Extract the myco data for each coordinate pair add it to the rest of the data
-AM_percent = raster::extract(am, globalData[, c(2, 1)])
-EM_percent = raster::extract(em, globalData[, c(2, 1)])
-ER_percent = raster::extract(er, globalData[, c(2, 1)])
-NM_percent = raster::extract(nm, globalData[, c(2, 1)])
-globalData = cbind(globalData, AM_percent, EM_percent, ER_percent, NM_percent)
+AM_percent <- raster::extract(am, globalData[, c(2, 1)])
+EM_percent <- raster::extract(em, globalData[, c(2, 1)])
+ER_percent <- raster::extract(er, globalData[, c(2, 1)])
+NM_percent <- raster::extract(nm, globalData[, c(2, 1)])
+globalData <- cbind(globalData, AM_percent, EM_percent, ER_percent, NM_percent)
 ```
 
 ``` {r GlobalPullFromBiomass}
@@ -334,7 +329,7 @@ raster(here::here("Data", "belowground_biomass_carbon_2010.tif")) %>%
   raster::extract(globalData[, c(2, 1)]) -> BM_belowground
 
 # Add biomass to the dataframe
-globalData = cbind(globalData, BM_aboveground, BM_belowground)
+globalData <- cbind(globalData, BM_aboveground, BM_belowground)
 ```
 
 ``` {r GlobalPullFromNDep}
@@ -345,7 +340,7 @@ raster(here::here("Data", "sdat_830_2_20200721_153826639.asc")) %>%
   raster::extract(globalData[, c(2, 1)]) -> N_dep_1993
 
 # Add it to the dataframe
-globalData = cbind(globalData, N_dep_1993)
+globalData <- cbind(globalData, N_dep_1993)
 ```
 
 ``` {r MappingAndRemoving}
@@ -353,28 +348,33 @@ globalData = cbind(globalData, N_dep_1993)
 
 # Plot starting global grid of coords
 ggplot(globalData, aes(x = Longitude, y = Latitude)) +
-  geom_point(size = .3) +
+  geom_point(size = 0.3) +
   lims(x = c(-180, 180), y = c(-90, 90))
 
 # Get rid of points with missing warner Rs, myco, and climate data
-globalData = globalData[complete.cases(globalData),]
+globalData <- globalData[complete.cases(globalData),]
 
 # Plot again
 ggplot(globalData, aes(x = Longitude, y = Latitude)) +
-  geom_point(size = .3,) +
+  geom_point(size = 0.3) +
   lims(x = c(-180, 180), y = c(-90, 90))
 ```
 
 ``` {r GlobalPrediction}
 ## Predict global RC
 
-# Predict it
-prediction = predict(model, globalData)
-globalWithP = cbind(globalData, prediction)
+# As before, need to change a few things in data frame
+globalData$absLat <- abs(globalData$Latitude)
+globalData$MiddleClimate <- as.factor(globalData$MiddleClimate)
 
-summary(globalWithP)
+# Predict it
+globalData$prediction <- predict(model, globalData)
+
+ggplot(globalData, aes(Longitude, Latitude, color = prediction)) + 
+  geom_point() +
+  scale_color_viridis_c()
 
 # Look at the distribution of predictions
-ggplot(globalWithP, aes(x = prediction)) +
+ggplot(globalData, aes(x = prediction)) +
   geom_histogram()
 ```
