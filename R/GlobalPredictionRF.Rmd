@@ -174,7 +174,8 @@ model <- randomForest(RC_annual ~
 ## Investigate how well the first model works
 
 # Predict allData RC's using the model
-withP = cbind(allData, prediction)
+prediction <- predict(model, allData)
+withP <- cbind(allData, prediction)
 
 # Plot these predictions vs the true values
 ggplot(withP, aes(x = prediction, y = RC_annual)) +
@@ -364,13 +365,18 @@ ggplot(globalData, aes(x = Longitude, y = Latitude)) +
 ``` {r GlobalPrediction}
 ## Predict global RC
 
-# Predict it
-prediction = predict(model, globalData)
-globalWithP = cbind(globalData, prediction)
+# As before, need to change a few things in data frame
+globalData$absLat <- abs(globalData$Latitude)
+globalData$MiddleClimate <- as.factor(globalData$MiddleClimate)
 
-summary(globalWithP)
+# Predict it
+globalData$prediction <- predict(model, globalData)
+
+ggplot(globalData, aes(Longitude, Latitude, color = prediction)) + 
+  geom_point() +
+  scale_color_viridis_c()
 
 # Look at the distribution of predictions
-ggplot(globalWithP, aes(x = prediction)) +
+ggplot(globalData, aes(x = prediction)) +
   geom_histogram()
 ```
