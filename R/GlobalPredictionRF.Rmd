@@ -13,11 +13,9 @@ library(tidyr)
 library(ggplot2)
 theme_set(theme_minimal())
 library(here)
-library(hexbin)
 library(raster)
 library(randomForest)
 library(caret)
-library(e1071)
 ```
 
 ```{r SRDBSetup, include = FALSE}
