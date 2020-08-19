@@ -358,6 +358,11 @@ globalData <- globalData[complete.cases(globalData),]
 ggplot(globalData, aes(x = Longitude, y = Latitude)) +
   geom_point(size = 0.3) +
   lims(x = c(-180, 180), y = c(-90, 90))
+
+# Plot Global Warner
+ggplot(globalData, aes(x = Longitude, y = Latitude, color = Rs_warner)) +
+  geom_point(size = 0.3) +
+  lims(x = c(-180, 180), y = c(-90, 90))
 ```
 
 ``` {r GlobalPrediction}
@@ -370,14 +375,19 @@ globalData$MiddleClimate <- as.factor(globalData$MiddleClimate)
 # Predict it
 globalData$prediction <- predict(model, globalData)
 
+# Make the default theme have a centered title
+theme_update(plot.title = element_text(hjust = 0.5))
+
 # Plot predictions globally
 ggplot(globalData, aes(Longitude, Latitude, color = prediction)) + 
   geom_point(size = 0.3) +
   lims(x = c(-180, 180), y = c(-90, 90)) +
   labs(color = "RC prediction") +
+  ggtitle("Global RC Predictions") +
   scale_color_viridis_c()
 
 # Look at the distribution of predictions
 ggplot(globalData, aes(x = prediction)) +
-  geom_histogram()
+  geom_histogram(color = "black", fill = "lightgrey") +
+  labs(x = "RC Prediction")
 ```

@@ -133,7 +133,7 @@ mutate(allData, Latitude2 = round(Latitude*2)/2+0.25, Longitude2 = round(Longitu
 left_join(allData, IGBP_Koppen_MODIS, by=c("Latitude2" = "Latitude", "Longitude2" = "Longitude")) -> allData
 
 # Remove data I don't want anymore and NAs
-allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn))
+allData = subset(allData, select = -c(Latitude2, Longitude2, IGBP, Ecosystem, ClimateTypes, barren_yn, warner_rs))
 ```
 
 ### Predicting RC Using a Default Random Forest Model
@@ -354,7 +354,8 @@ ggplot(trainWithP, aes(x = predict2, y = RC_annual)) +
   lims(x = c(0, 1)) +
   geom_point() +
   geom_smooth(method = lm) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red") +
+  labs(x = "RC Prediction")
 
 # Calculate the residuals and make a residuals plot
 residuals2 = trainWithP$RC_annual - trainWithP$predict2
@@ -386,7 +387,8 @@ ggplot(testWithP, aes(x = predict2, y = RC_annual)) +
   lims(x = c(0, 1)) +
   geom_point() +
   geom_smooth(method = lm) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red")
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", size = 1, color = "red") +
+  labs(x = "RC Prediction")
 
 # Calculate the residuals and make a residuals plot
 residuals2 = testWithP$RC_annual - testWithP$predict2
@@ -417,4 +419,18 @@ summary(trainCor)
 #For testing data
 testCor = lm(RC_annual ~ predict2, data = testWithP)
 summary(testCor)
+```
+
+``` {r MapResults}
+## Map the predictions for all SRDB points
+
+# Put all results in one dataframe
+everything = rbind(trainWithP, testWithP)
+
+# Make a map
+ggplot(everything, aes(x = Longitude, y = Latitude, color = predict2)) +
+  geom_point() +
+  lims(x = c(-180, 180), y = c(-90, 90)) +
+  labs(color = "RC prediction") +
+  scale_color_viridis_c()
 ```
