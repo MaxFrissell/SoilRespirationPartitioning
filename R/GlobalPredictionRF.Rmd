@@ -383,7 +383,6 @@ ggplot(globalData, aes(Longitude, Latitude, color = prediction)) +
   geom_point(size = 0.3) +
   lims(x = c(-180, 180), y = c(-90, 90)) +
   labs(color = "RC prediction") +
-  ggtitle("Global RC Predictions") +
   scale_color_viridis_c()
 
 # Look at the distribution of predictions
